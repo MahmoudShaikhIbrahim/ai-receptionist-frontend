@@ -1,11 +1,13 @@
 import axios from "axios";
 
-export const API_BASE_URL = "https://gangliest-marita-inefficaciously.ngrok-free.dev";
+// Read from Vite env (what you put in .env)
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 export async function fetchCalls() {
   try {
     const response = await axios.get(`${API_BASE_URL}/calls`);
-    return Array.isArray(response.data) ? response.data : [];
+    return response.data || [];
   } catch (error) {
     console.error("Error fetching calls:", error);
     return [];
