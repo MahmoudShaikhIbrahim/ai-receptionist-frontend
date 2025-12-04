@@ -15,7 +15,7 @@ export default function CallDashboard() {
         setCalls(result || []);
       } catch (err) {
         console.error("Error loading calls:", err);
-        setCalls([]); 
+        setCalls([]);
       }
 
       setLoading(false);
@@ -38,14 +38,15 @@ export default function CallDashboard() {
         <div className="call-list">
           {calls.map((c) => (
             <div key={c._id} className="call-card">
-              <div className="call-header">
-                <span className="call-type">{c.call_type}</span>
-                <span className="call-status">{c.call_status}</span>
-              </div>
               <div className="call-body">
-                <p><strong>Call ID:</strong> {c.call_id}</p>
-                <p><strong>Agent:</strong> {c.agent_name}</p>
-                <p><strong>Started:</strong> {new Date(c.createdAt).toLocaleString()}</p>
+                <p><strong>From:</strong> {c.from}</p>
+                <p><strong>To:</strong> {c.to}</p>
+                <p><strong>Duration:</strong> {c.duration}s</p>
+                <p><strong>Outcome:</strong> {c.outcome}</p>
+                <p><strong>Timestamp:</strong> 
+                  {c.timestamp ? new Date(c.timestamp).toLocaleString() : "N/A"}
+                </p>
+                <p><strong>Transcript:</strong> {c.transcript || "No transcript"}</p>
               </div>
             </div>
           ))}
