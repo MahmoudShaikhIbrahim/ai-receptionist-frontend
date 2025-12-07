@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useEffect, useState } from "react";
-import { fetchAgents, createAgent } from "./api";
+import { fetchAgents, createAgent } from "./api/api.js";
 
 function App() {
   const [agents, setAgents] = useState([]);
