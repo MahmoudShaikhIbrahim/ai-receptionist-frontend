@@ -1,3 +1,4 @@
+// src/pages/SignupPage.jsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -12,6 +13,7 @@ export default function SignupPage() {
     password: "",
     businessType: "restaurant",
   });
+
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -24,17 +26,22 @@ export default function SignupPage() {
     e.preventDefault();
     setError("");
 
-    if (!form.businessName || !form.email || !form.password || !form.businessType) {
+    if (!form.businessName || !form.email || !form.password) {
       setError("All fields are required.");
       return;
     }
 
     try {
       setSubmitting(true);
+
+      // Create account + store token
       await signup(form);
-      navigate("/");
+
+      // ✅ THIS WAS MISSING
+      navigate("/dashboard");
+
     } catch (err) {
-      console.error(err);
+      console.error("SIGNUP ERROR:", err);
       const msg =
         err?.response?.data?.error || "Failed to sign up. Please try again.";
       setError(msg);
@@ -51,7 +58,9 @@ export default function SignupPage() {
         padding: "32px 16px",
       }}
     >
-      <h1 style={{ fontSize: "24px", marginBottom: "8px" }}>Create Your Pure AI Account</h1>
+      <h1 style={{ fontSize: "24px", marginBottom: "8px" }}>
+        Create Your Pure AI Account
+      </h1>
       <p style={{ fontSize: "14px", opacity: 0.7, marginBottom: "16px" }}>
         One login for your business. Your AI receptionist will be created automatically.
       </p>
@@ -71,7 +80,10 @@ export default function SignupPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "flex", flexDirection: "column", gap: "10px" }}
+      >
         <div>
           <label style={labelStyle}>Business Name</label>
           <input

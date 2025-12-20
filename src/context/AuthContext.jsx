@@ -5,67 +5,98 @@ import { loginBusiness, signupBusiness, getBusinessMe } from "../api/api";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem("pureai_token"));
+  const [token, setToken] = useState(null);
   const [business, setBusiness] = useState(null);
-  const [loading, setLoading] = useState(true); // while checking token
+  const [agent, setAgent] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // --------------------------
+  // INIT (load from localStorage)
+  // --------------------------
   useEffect(() => {
     async function init() {
+      const storedToken = localStorage.getItem("pureai_token");
+
+      if (!storedToken) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        if (!token) {
-          setLoading(false);
-          return;
-        }
+        setToken(storedToken);
+
         const data = await getBusinessMe();
         setBusiness(data.business);
+        setAgent(data.agent);
       } catch (err) {
-        console.error("Failed to load business from token:", err);
-        setToken(null);
+        console.error("Invalid or expired token:", err);
         localStorage.removeItem("pureai_token");
+        setToken(null);
+        setBusiness(null);
+        setAgent(null);
       } finally {
         setLoading(false);
       }
     }
 
     init();
-  }, [token]);
+  }, []);
 
-  async function handleSignup({ businessName, email, password, businessType }) {
-    const data = await signupBusiness({ businessName, email, password, businessType });
-    const newToken = data.token;
+  // --------------------------
+  // SIGNUP
+  // --------------------------
+  async function signup({ businessName, email, password, businessType }) {
+    const data = await signupBusiness({
+      businessName,
+      email,
+      password,
+      businessType,
+    });
 
-    localStorage.setItem("pureai_token", newToken);
-    setToken(newToken);
+    localStorage.setItem("pureai_token", data.token);
+    setToken(data.token);
     setBusiness(data.business);
+
+    const me = await getBusinessMe();
+    setAgent(me.agent);
 
     return data;
   }
 
-  async function handleLogin({ email, password }) {
+  // --------------------------
+  // LOGIN
+  // --------------------------
+  async function login({ email, password }) {
     const data = await loginBusiness({ email, password });
-    const newToken = data.token;
 
-    localStorage.setItem("pureai_token", newToken);
-    setToken(newToken);
+    localStorage.setItem("pureai_token", data.token);
+    setToken(data.token);
     setBusiness(data.business);
+
+    const me = await getBusinessMe();
+    setAgent(me.agent);
 
     return data;
   }
 
-  function handleLogout() {
+  // --------------------------
+  // LOGOUT
+  // --------------------------
+  function logout() {
     localStorage.removeItem("pureai_token");
     setToken(null);
     setBusiness(null);
+    setAgent(null);
   }
 
   const value = {
     token,
     business,
+    agent,
     loading,
-    signup: handleSignup,
-    login: handleLogin,
-    logout: handleLogout,
-    setBusiness,
+    signup,
+    login,
+    logout,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

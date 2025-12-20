@@ -1,3 +1,4 @@
+// src/pages/LoginPage.jsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -10,6 +11,7 @@ export default function LoginPage() {
     email: "",
     password: "",
   });
+
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -29,13 +31,22 @@ export default function LoginPage() {
 
     try {
       setSubmitting(true);
-      await login(form);
-      navigate("/");
+
+      // 🔑 LOGIN
+      await login({
+        email: form.email,
+        password: form.password,
+      });
+
+      // 🚀 REDIRECT AFTER LOGIN (THIS WAS MISSING)
+      navigate("/dashboard", { replace: true });
+
     } catch (err) {
-      console.error(err);
-      const msg =
-        err?.response?.data?.error || "Failed to log in. Please try again.";
-      setError(msg);
+      console.error("LOGIN ERROR:", err);
+      setError(
+        err?.response?.data?.error ||
+        "Failed to log in. Please try again."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -49,7 +60,10 @@ export default function LoginPage() {
         padding: "32px 16px",
       }}
     >
-      <h1 style={{ fontSize: "24px", marginBottom: "8px" }}>Log In to Pure AI</h1>
+      <h1 style={{ fontSize: "24px", marginBottom: "8px" }}>
+        Log In to Pure AI
+      </h1>
+
       <p style={{ fontSize: "14px", opacity: 0.7, marginBottom: "16px" }}>
         Use the email and password you registered your business with.
       </p>
@@ -69,7 +83,14 @@ export default function LoginPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+        }}
+      >
         <div>
           <label style={labelStyle}>Email</label>
           <input
@@ -102,7 +123,8 @@ export default function LoginPage() {
             padding: "10px 18px",
             borderRadius: "999px",
             border: "none",
-            background: "linear-gradient(135deg, #22c55e, #16a34a, #22c55e)",
+            background:
+              "linear-gradient(135deg, #22c55e, #16a34a, #22c55e)",
             color: "#020617",
             fontWeight: 600,
             fontSize: "14px",
@@ -116,7 +138,10 @@ export default function LoginPage() {
 
       <p style={{ marginTop: "16px", fontSize: "13px", opacity: 0.7 }}>
         Don&apos;t have an account?{" "}
-        <Link to="/signup" style={{ color: "#22c55e", textDecoration: "none" }}>
+        <Link
+          to="/signup"
+          style={{ color: "#22c55e", textDecoration: "none" }}
+        >
           Create one
         </Link>
       </p>
