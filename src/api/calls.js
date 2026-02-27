@@ -1,16 +1,29 @@
 // src/api/calls.js
 import apiClient from "./client";
 
-export async function fetchCalls() {
-  try {
-    const res = await apiClient.get("/calls");
-    const data = res.data;
+/**
+ * Fetch calls for the authenticated business
+ *
+ * @param {Object} options
+ * @param {"all" | "order" | "booking"} options.type
+ * @param {number} options.page
+ * @param {number} options.limit
+ */
+export async function fetchCalls({
+  type = "all",
+  page = 1,
+  limit = 20,
+} = {}) {
+  const res = await apiClient.get("/business/calls", {
+    params: {
+      type,
+      page,
+      limit,
+    },
+  });
 
-    if (Array.isArray(data)) return data;
-    if (data && typeof data === "object") return [data];
-    return [];
-  } catch (err) {
-    console.error("Error fetching calls:", err);
-    return [];
-  }
+  return {
+    data: res.data.data,
+    pagination: res.data.pagination,
+  };
 }
