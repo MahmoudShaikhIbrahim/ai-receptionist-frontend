@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { getFloors, getLiveFloor } from "../../api/business";
-import { seatWalkIn, setTableMaintenance } from "../../api/tables";
+import { seatWalkIn, setTableMaintenance, setTableAvailable } from "../../api/tables";
 import TableDetailsPanel from "../../components/floor/TableDetailsPanel";
 import FloorCanvas from "../../components/floor/FloorCanvas";
 import { Outlet } from "react-router-dom";
+
 
 function formatTime(dt) {
   try {
@@ -199,133 +200,182 @@ export default function FloorLive() {
 
       {/* ================= MODAL ================= */}
       {selectedTable && (
+  <div
+    onClick={closeModal}
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.35)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 9999,
+      padding: 20,
+    }}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: "100%",
+        maxWidth: 440,
+        background: "#FFFFFF",
+        borderRadius: 20,
+        padding: 24,
+        boxShadow: "0 25px 80px rgba(0,0,0,0.25)",
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui',
+      }}
+    >
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 20, fontWeight: 700 }}>
+          {selectedTable.label}
+        </div>
+        <div style={{ fontSize: 13, color: "#6E6E73" }}>
+          {selectedTable.capacity} seats
+        </div>
+      </div>
+
+      {/* Booking Info */}
+      {selectedTable.booking ? (
         <div
-          onClick={closeModal}
           style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.35)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-            zIndex: 9999,
+            background: "#F2F2F7",
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 18,
+            fontSize: 14,
           }}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%",
-              maxWidth: 420,
-              background: "#FFFFFF",
-              borderRadius: 18,
-              boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-              padding: 18,
-              fontFamily:
-                '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui',
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 700 }}>
-                  {selectedTable.label}
-                </div>
-                <div style={{ fontSize: 13, color: "#6E6E73" }}>
-                  {selectedTable.capacity} seats •{" "}
-                  {statusLabel(selectedTable.status)}
-                </div>
-              </div>
-
-              <button
-                onClick={closeModal}
-                style={{
-                  border: "none",
-                  background: "rgba(0,0,0,0.05)",
-                  borderRadius: 10,
-                  padding: "8px 10px",
-                  cursor: "pointer",
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {actionError && (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: 10,
-                  borderRadius: 12,
-                  background: "rgba(255,59,48,0.10)",
-                  color: "#B42318",
-                  fontSize: 13,
-                }}
-              >
-                {actionError}
-              </div>
-            )}
-
-            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-              <button
-                onClick={closeModal}
-                disabled={actionLoading}
-                style={{
-                  flex: 1,
-                  padding: "12px 14px",
-                  borderRadius: 14,
-                  border: "1px solid rgba(0,0,0,0.10)",
-                  background: "#FFFFFF",
-                  fontWeight: 600,
-                }}
-              >
-                Close
-              </button>
-
-              <button
-                onClick={handleSeatWalkIn}
-                disabled={!canSeatWalkIn || actionLoading}
-                style={{
-                  flex: 1,
-                  padding: "12px 14px",
-                  borderRadius: 14,
-                  border: "none",
-                  background:
-                    !canSeatWalkIn || actionLoading
-                      ? "#D2D2D7"
-                      : "#007AFF",
-                  color: "#FFFFFF",
-                  fontWeight: 700,
-                }}
-              >
-                {actionLoading ? "Seating..." : "Seat Walk-In"}
-              </button>
-            </div>
-
-            <div style={{ marginTop: 10 }}>
-              <button
-                onClick={handleToggleMaintenance}
-                disabled={actionLoading}
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  borderRadius: 14,
-                  border: "1px solid rgba(0,0,0,0.10)",
-                  background:
-                    selectedTable.status === "maintenance"
-                      ? "#34C759"
-                      : "#FF3B30",
-                  color: "#FFFFFF",
-                  fontWeight: 700,
-                }}
-              >
-                {selectedTable.status === "maintenance"
-                  ? "Remove Maintenance"
-                  : "Mark Maintenance"}
-              </button>
-            </div>
-          </div>
+          <div><strong>Name:</strong> {selectedTable.booking.customerName || "Walk-in"}</div>
+          <div><strong>Phone:</strong> {selectedTable.booking.customerPhone || "-"}</div>
+          <div><strong>Guests:</strong> {selectedTable.booking.partySize}</div>
+          <div><strong>Time:</strong> {formatTime(selectedTable.booking.startIso)}</div>
+        </div>
+      ) : (
+        <div
+          style={{
+            background: "#F2F2F7",
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 18,
+            fontSize: 14,
+            color: "#6E6E73",
+          }}
+        >
+          No active booking
         </div>
       )}
+
+      {actionError && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: 10,
+            borderRadius: 12,
+            background: "rgba(255,59,48,0.10)",
+            color: "#B42318",
+            fontSize: 13,
+          }}
+        >
+          {actionError}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 10 }}>
+        {/* AVAILABLE */}
+        <button
+          disabled={actionLoading}
+          onClick={async () => {
+            setActionLoading(true);
+            setActionError("");
+            try {
+              await setTableAvailable(selectedTable._id);
+              await loadLiveFloor(selectedFloor);
+              closeModal();
+            } catch (err) {
+              setActionError("Failed to set available");
+              setActionLoading(false);
+            }
+          }}
+          style={{
+            flex: 1,
+            padding: "12px",
+            borderRadius: 14,
+            border: "none",
+            background: "#34C759",
+            color: "#FFFFFF",
+            fontWeight: 700,
+          }}
+        >
+          Available
+        </button>
+
+        {/* WALK-IN */}
+        <button
+          disabled={
+            actionLoading ||
+            selectedTable.status !== "free"
+          }
+          onClick={handleSeatWalkIn}
+          style={{
+            flex: 1,
+            padding: "12px",
+            borderRadius: 14,
+            border: "none",
+            background:
+              selectedTable.status === "free"
+                ? "#007AFF"
+                : "#D2D2D7",
+            color: "#FFFFFF",
+            fontWeight: 700,
+          }}
+        >
+          Walk-in Guest
+        </button>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+        {/* MAINTENANCE */}
+        <button
+          disabled={actionLoading}
+          onClick={handleToggleMaintenance}
+          style={{
+            flex: 1,
+            padding: "12px",
+            borderRadius: 14,
+            border: "none",
+            background:
+              selectedTable.status === "maintenance"
+                ? "#34C759"
+                : "#FF3B30",
+            color: "#FFFFFF",
+            fontWeight: 700,
+          }}
+        >
+          {selectedTable.status === "maintenance"
+            ? "Remove Maintenance"
+            : "Maintenance"}
+        </button>
+
+        {/* CANCEL */}
+        <button
+          disabled={actionLoading}
+          onClick={closeModal}
+          style={{
+            flex: 1,
+            padding: "12px",
+            borderRadius: 14,
+            border: "1px solid rgba(0,0,0,0.1)",
+            background: "#FFFFFF",
+            fontWeight: 600,
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       <Outlet />
     </div>

@@ -27,3 +27,13 @@ export async function setTableMaintenance(tableId, isMaintenance) {
 
   return res.data;
 }
+
+export async function setTableAvailable(tableId) {
+  if (!tableId) throw new Error("tableId is required");
+
+  const res = await apiClient.patch(
+    `/tables/${tableId}/available`
+  );
+
+  return res.data;
+}
