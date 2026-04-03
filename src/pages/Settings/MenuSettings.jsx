@@ -77,16 +77,14 @@ export default function MenuSettings() {
   try {
     if (editIndex !== null) {
       const itemId = items[editIndex]._id;
-      await updateMenuItem(itemId, itemData);
+      const data = await updateMenuItem(itemId, itemData);
+      setItems(prev => prev.map((it, i) => i === editIndex ? data.item : it));
       setMsg("Item updated.");
     } else {
-      await addMenuItem(itemData);
+      const data = await addMenuItem(itemData);
+      setItems(prev => [...prev, data.item]);
       setMsg("Item added.");
     }
-
-    // Reload fresh from server
-    const data = await getAgentMe();
-    setItems(data.agent?.menu || []);
     setShowForm(false);
     setEditIndex(null);
     setForm(defaultForm());
@@ -98,10 +96,9 @@ export default function MenuSettings() {
 async function deleteItem(idx) {
   setErr(""); setMsg("");
   const itemId = items[idx]._id;
+  setItems(prev => prev.filter((_, i) => i !== idx));
   try {
     await deleteMenuItem(itemId);
-    const data = await getAgentMe();
-    setItems(data.agent?.menu || []);
     setMsg("Item removed.");
   } catch {
     setErr("Failed to delete item.");
@@ -110,10 +107,11 @@ async function deleteItem(idx) {
 
 async function toggleAvailable(idx) {
   const item = items[idx];
+  setItems(prev => prev.map((it, i) =>
+    i === idx ? { ...it, available: !it.available } : it
+  ));
   try {
     await updateMenuItem(item._id, { available: !item.available });
-    const data = await getAgentMe();
-    setItems(data.agent?.menu || []);
   } catch {
     setErr("Failed to save.");
   }
