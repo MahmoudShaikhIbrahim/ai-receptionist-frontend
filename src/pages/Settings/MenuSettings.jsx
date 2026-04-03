@@ -1,6 +1,6 @@
 // src/pages/Settings/MenuSettings.jsx
 import { useEffect, useState } from "react";
-import { getAgentMe, updateAgentMe } from "../../api/api";
+import { getAgentMe, addMenuItem, updateMenuItem, deleteMenuItem } from "../../api/api";
 
 const CATEGORIES = ["Starters", "Mains", "Grills", "Sides", "Desserts", "Drinks", "Other"];
 
@@ -41,18 +41,18 @@ export default function MenuSettings() {
   }
 
   function openEdit(idx) {
-    const item = items[idx];
-    setForm({
-      name: item.name || "",
-      price: item.price?.toString() || "",
-      currency: item.currency || "AED",
-      category: item.category || "Mains",
-      description: item.description || "",
-      available: item.available !== false,
-    });
-    setEditIndex(idx);
-    setShowForm(true);
-  }
+  const item = items[idx];
+  setForm({
+    name: item.name || "",
+    price: item.price?.toString() || "",
+    currency: item.currency || "AED",
+    category: item.category || "Mains",
+    description: item.description || "",
+    available: item.available !== false,
+  });
+  setEditIndex(idx);
+  setShowForm(true);
+}
 
   function handleFormChange(e) {
     const { name, value, type, checked } = e.target;
@@ -60,60 +60,64 @@ export default function MenuSettings() {
   }
 
   async function handleFormSubmit(e) {
-    e.preventDefault();
-    setErr(""); setMsg("");
-    if (!form.name.trim()) return setErr("Item name is required.");
-    if (!form.price || isNaN(Number(form.price))) return setErr("Enter a valid price.");
+  e.preventDefault();
+  setErr(""); setMsg("");
+  if (!form.name.trim()) return setErr("Item name is required.");
+  if (!form.price || isNaN(Number(form.price))) return setErr("Enter a valid price.");
 
-    const newItem = {
-      name: form.name.trim(),
-      price: Number(form.price),
-      currency: form.currency,
-      category: form.category,
-      description: form.description.trim(),
-      available: form.available,
-    };
+  const itemData = {
+    name: form.name.trim(),
+    price: Number(form.price),
+    currency: form.currency,
+    category: form.category,
+    description: form.description.trim(),
+    available: form.available,
+  };
 
-    const updatedItems = editIndex !== null
-      ? items.map((it, i) => i === editIndex ? newItem : it)
-      : [...items, newItem];
+  try {
+    if (editIndex !== null) {
+      const itemId = items[editIndex]._id;
+      await updateMenuItem(itemId, itemData);
+      setMsg("Item updated.");
+    } else {
+      await addMenuItem(itemData);
+      setMsg("Item added.");
+    }
 
-    setItems(updatedItems);
+    // Reload fresh from server
+    const data = await getAgentMe();
+    setItems(data.agent?.menu || []);
     setShowForm(false);
     setEditIndex(null);
     setForm(defaultForm());
-
-    try {
-      await updateAgentMe({ menu: updatedItems });
-      setMsg(editIndex !== null ? "Item updated." : "Item added.");
-    } catch {
-      setErr("Failed to save menu.");
-    }
+  } catch {
+    setErr("Failed to save item.");
   }
+}
 
-  async function deleteItem(idx) {
-    setErr(""); setMsg("");
-    const updatedItems = items.filter((_, i) => i !== idx);
-    setItems(updatedItems);
-    try {
-      await updateAgentMe({ menu: updatedItems });
-      setMsg("Item removed.");
-    } catch {
-      setErr("Failed to save menu.");
-    }
+async function deleteItem(idx) {
+  setErr(""); setMsg("");
+  const itemId = items[idx]._id;
+  try {
+    await deleteMenuItem(itemId);
+    const data = await getAgentMe();
+    setItems(data.agent?.menu || []);
+    setMsg("Item removed.");
+  } catch {
+    setErr("Failed to delete item.");
   }
+}
 
-  async function toggleAvailable(idx) {
-    const updatedItems = items.map((it, i) =>
-      i === idx ? { ...it, available: !it.available } : it
-    );
-    setItems(updatedItems);
-    try {
-      await updateAgentMe({ menu: updatedItems });
-    } catch {
-      setErr("Failed to save.");
-    }
+async function toggleAvailable(idx) {
+  const item = items[idx];
+  try {
+    await updateMenuItem(item._id, { available: !item.available });
+    const data = await getAgentMe();
+    setItems(data.agent?.menu || []);
+  } catch {
+    setErr("Failed to save.");
   }
+}
 
   // Group items by category
   const grouped = items.reduce((acc, item, idx) => {
