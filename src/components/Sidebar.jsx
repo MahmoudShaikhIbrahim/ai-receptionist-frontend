@@ -8,7 +8,7 @@ export default function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar__brand">
         <div className="sidebar__logo" aria-hidden="true">
-          
+          
         </div>
         <div>
           <div className="sidebar__name">Pure AI</div>
@@ -50,6 +50,12 @@ export default function Sidebar() {
           />
 
           <NavItem to="/settings/agent" label="Agent" icon={<IconUser />} />
+
+          <NavItem
+            to="/settings/menu"
+            label="Menu"
+            icon={<IconMenu />}
+          />
 
           <NavItem
             to="/dashboard/floor/layout"
@@ -184,6 +190,29 @@ function IconUser() {
         d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
         stroke="currentColor"
         strokeWidth="1.6"
+      />
+    </Svg>
+  );
+}
+
+function IconMenu() {
+  return (
+    <Svg>
+      <path
+        d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M9 12h6M9 16h4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
       />
     </Svg>
   );

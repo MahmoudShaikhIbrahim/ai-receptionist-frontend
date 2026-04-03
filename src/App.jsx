@@ -19,6 +19,7 @@ import DashboardLayout from "./layouts/DashboardLayout";
 /* SETTINGS */
 import BusinessSettings from "./pages/Settings/BusinessSettings";
 import AgentSettings from "./pages/Settings/AgentSettings";
+import MenuSettings from "./pages/Settings/MenuSettings";
 
 /* ======================
    PROTECTED ROUTE
@@ -82,8 +83,7 @@ export default function App() {
             }
           />
 
-
-           {/* LIVE FLOOR */}
+          {/* LIVE FLOOR */}
           <Route
             path="/dashboard/floor"
             element={
@@ -107,20 +107,6 @@ export default function App() {
             }
           />
 
-          {/* CALLS ROUTE — TEMP DISABLED */}
-          {/*
-          <Route
-            path="/calls"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <Calls />
-                </DashboardLayout>
-              </ProtectedRoute>
-            }
-          />
-          */}
-
           {/* SETTINGS */}
           <Route
             path="/settings/business"
@@ -139,6 +125,17 @@ export default function App() {
               <ProtectedRoute>
                 <DashboardLayout>
                   <AgentSettings />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/settings/menu"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <MenuSettings />
                 </DashboardLayout>
               </ProtectedRoute>
             }
