@@ -57,3 +57,22 @@ export async function getLiveFloor(floorId) {
   const res = await apiClient.get(`/floors/${floorId}/live`);
   return res.data; // { floor, tables }
 }
+
+export async function getBookings({ page = 1, limit = 20, status } = {}) {
+  const params = { page, limit };
+  if (status) params.status = status;
+  const res = await apiClient.get("/bookings", { params });
+  return res.data;
+}
+
+export async function updateBookingStatus(id, status) {
+  const res = await apiClient.patch(`/bookings/${id}/status`, { status });
+  return res.data;
+}
+
+export async function getOrders({ page = 1, limit = 20, status } = {}) {
+  const params = { page, limit };
+  if (status) params.status = status;
+  const res = await apiClient.get("/orders", { params });
+  return res.data;
+}
