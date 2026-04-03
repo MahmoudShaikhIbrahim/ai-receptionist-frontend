@@ -7,7 +7,6 @@ const CATEGORIES = ["Starters", "Mains", "Grills", "Sides", "Desserts", "Drinks"
 export default function MenuSettings() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -60,8 +59,9 @@ export default function MenuSettings() {
     setForm(f => ({ ...f, [name]: type === "checkbox" ? checked : value }));
   }
 
-  function handleFormSubmit(e) {
+  async function handleFormSubmit(e) {
     e.preventDefault();
+    setErr(""); setMsg("");
     if (!form.name.trim()) return setErr("Item name is required.");
     if (!form.price || isNaN(Number(form.price))) return setErr("Enter a valid price.");
 
@@ -74,38 +74,44 @@ export default function MenuSettings() {
       available: form.available,
     };
 
-    if (editIndex !== null) {
-      setItems(prev => prev.map((it, i) => i === editIndex ? newItem : it));
-    } else {
-      setItems(prev => [...prev, newItem]);
-    }
+    const updatedItems = editIndex !== null
+      ? items.map((it, i) => i === editIndex ? newItem : it)
+      : [...items, newItem];
 
+    setItems(updatedItems);
     setShowForm(false);
     setEditIndex(null);
     setForm(defaultForm());
-    setErr("");
-  }
 
-  function deleteItem(idx) {
-    setItems(prev => prev.filter((_, i) => i !== idx));
-  }
-
-  function toggleAvailable(idx) {
-    setItems(prev => prev.map((it, i) =>
-      i === idx ? { ...it, available: !it.available } : it
-    ));
-  }
-
-  async function handleSave() {
-    setErr(""); setMsg("");
     try {
-      setSaving(true);
-      await updateAgentMe({ menu: items });
-      setMsg("Menu saved successfully.");
+      await updateAgentMe({ menu: updatedItems });
+      setMsg(editIndex !== null ? "Item updated." : "Item added.");
     } catch {
       setErr("Failed to save menu.");
-    } finally {
-      setSaving(false);
+    }
+  }
+
+  async function deleteItem(idx) {
+    setErr(""); setMsg("");
+    const updatedItems = items.filter((_, i) => i !== idx);
+    setItems(updatedItems);
+    try {
+      await updateAgentMe({ menu: updatedItems });
+      setMsg("Item removed.");
+    } catch {
+      setErr("Failed to save menu.");
+    }
+  }
+
+  async function toggleAvailable(idx) {
+    const updatedItems = items.map((it, i) =>
+      i === idx ? { ...it, available: !it.available } : it
+    );
+    setItems(updatedItems);
+    try {
+      await updateAgentMe({ menu: updatedItems });
+    } catch {
+      setErr("Failed to save.");
     }
   }
 
@@ -129,7 +135,7 @@ export default function MenuSettings() {
       {err && <div className="alert alert--error">{err}</div>}
       {msg && <div className="alert alert--success">{msg}</div>}
 
-      {/* Add Item Modal */}
+      {/* Add / Edit Modal */}
       {showForm && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
@@ -236,19 +242,9 @@ export default function MenuSettings() {
       <div className="card">
         <div className="cardHeader">
           <h2>{items.length} item{items.length !== 1 ? "s" : ""}</h2>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button className="buttonPrimary" style={{ marginTop: 0 }} onClick={openAdd}>
-              + Add Item
-            </button>
-            <button
-              className="buttonPrimary"
-              style={{ marginTop: 0, opacity: saving ? 0.6 : 1 }}
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? "Saving…" : "Save Menu"}
-            </button>
-          </div>
+          <button className="buttonPrimary" style={{ marginTop: 0 }} onClick={openAdd}>
+            + Add Item
+          </button>
         </div>
 
         {items.length === 0 ? (
@@ -361,7 +357,6 @@ const styles = {
     color: "var(--muted)",
     textTransform: "uppercase",
     letterSpacing: "0.08em",
-    marginBottom: 10,
     margin: "0 0 10px 0",
   },
   itemRow: {
