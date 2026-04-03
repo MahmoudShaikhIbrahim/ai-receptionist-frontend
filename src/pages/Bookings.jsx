@@ -127,7 +127,7 @@ export default function Bookings() {
                     <div style={{ fontSize: 12, color: "var(--muted)" }}>{b.customerPhone || ""}</div>
                   </td>
                   <td style={{ padding: "14px 20px", fontSize: 14 }}>{b.partySize} guests</td>
-                  <td style={{ padding: "14px 20px", fontSize: 14 }}>{formatDateTime(b.startTime)}</td>
+                  <td style={{ padding: "14px 20px", fontSize: 14 }}>{formatDateTime(b.startIso)}</td>
                   <td style={{ padding: "14px 20px" }}><StatusPill status={b.status} /></td>
                   <td style={{ padding: "14px 20px" }}>
                     <div style={{ display: "flex", gap: 6 }}>
