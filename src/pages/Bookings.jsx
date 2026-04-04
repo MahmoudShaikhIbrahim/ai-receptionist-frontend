@@ -1,6 +1,7 @@
 // src/pages/Bookings.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getBookings, updateBookingStatus } from "../api/business";
+import { useNotifications } from "../context/NotificationContext";
 
 const STATUS_COLORS = {
   confirmed: { bg: "rgba(52,199,89,0.12)", color: "#166534" },
@@ -38,9 +39,18 @@ export default function Bookings() {
   const [err, setErr] = useState("");
   const [filter, setFilter] = useState("all");
   const [updating, setUpdating] = useState(null);
+  const { clearBookings } = useNotifications();
+  const filterRef = useRef(filter);
+  filterRef.current = filter;
+
+  useEffect(() => {
+    clearBookings();
+  }, []);
 
   useEffect(() => {
     load();
+    const interval = setInterval(() => silentLoad(), 15000);
+    return () => clearInterval(interval);
   }, [filter]);
 
   async function load() {
@@ -53,6 +63,13 @@ export default function Bookings() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function silentLoad() {
+    try {
+      const data = await getBookings({ status: filterRef.current === "all" ? undefined : filterRef.current, limit: 50 });
+      setBookings(data.bookings || data.data || []);
+    } catch { }
   }
 
   async function handleStatus(id, status) {
@@ -78,7 +95,6 @@ export default function Bookings() {
 
       {err && <div className="alert alert--error">{err}</div>}
 
-      {/* Filter tabs */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {filters.map(f => (
           <button
@@ -132,28 +148,16 @@ export default function Bookings() {
                   <td style={{ padding: "14px 20px" }}>
                     <div style={{ display: "flex", gap: 6 }}>
                       {b.status === "confirmed" && (
-                        <ActionBtn
-                          label="Seat"
-                          color="#0071E3"
-                          loading={updating === b._id}
-                          onClick={() => handleStatus(b._id, "seated")}
-                        />
+                        <ActionBtn label="Seat" color="#0071E3" loading={updating === b._id} onClick={() => handleStatus(b._id, "seated")} />
                       )}
                       {["confirmed", "seated"].includes(b.status) && (
-                        <ActionBtn
-                          label="Cancel"
-                          color="#FF3B30"
-                          loading={updating === b._id}
-                          onClick={() => handleStatus(b._id, "cancelled")}
-                        />
+                        <ActionBtn label="Cancel" color="#FF3B30" loading={updating === b._id} onClick={() => handleStatus(b._id, "cancelled")} />
                       )}
                       {b.status === "seated" && (
-                        <ActionBtn
-                          label="Complete"
-                          color="#34C759"
-                          loading={updating === b._id}
-                          onClick={() => handleStatus(b._id, "completed")}
-                        />
+                        <ActionBtn label="Complete" color="#34C759" loading={updating === b._id} onClick={() => handleStatus(b._id, "completed")} />
+                      )}
+                      {["confirmed", "seated"].includes(b.status) && (
+                        <ActionBtn label="No-show" color="#FF9500" loading={updating === b._id} onClick={() => handleStatus(b._id, "no_show")} />
                       )}
                     </div>
                   </td>
@@ -176,7 +180,6 @@ function ActionBtn({ label, color, onClick, loading }) {
         padding: "6px 12px", borderRadius: 8, border: "none",
         background: color, color: "#fff", fontSize: 12,
         fontWeight: 600, cursor: "pointer", opacity: loading ? 0.6 : 1,
-        transition: "transform 150ms",
       }}
     >
       {label}

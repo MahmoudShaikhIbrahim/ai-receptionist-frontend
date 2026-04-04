@@ -1,6 +1,7 @@
 // src/pages/Orders.jsx
-import { useEffect, useState } from "react";
-import { getOrders } from "../api/business";
+import { useEffect, useRef, useState } from "react";
+import { getOrders, updateOrderStatus } from "../api/business";
+import { useNotifications } from "../context/NotificationContext";
 
 const STATUS_COLORS = {
   confirmed: { bg: "rgba(0,113,227,0.10)", color: "#0071E3" },
@@ -43,9 +44,19 @@ export default function Orders() {
   const [err, setErr] = useState("");
   const [filter, setFilter] = useState("all");
   const [expanded, setExpanded] = useState(null);
+  const [updating, setUpdating] = useState(null);
+  const { clearOrders } = useNotifications();
+  const filterRef = useRef(filter);
+  filterRef.current = filter;
+
+  useEffect(() => {
+    clearOrders();
+  }, []);
 
   useEffect(() => {
     load();
+    const interval = setInterval(() => silentLoad(), 15000);
+    return () => clearInterval(interval);
   }, [filter]);
 
   async function load() {
@@ -57,6 +68,25 @@ export default function Orders() {
       setErr("Failed to load orders.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function silentLoad() {
+    try {
+      const data = await getOrders({ status: filterRef.current === "all" ? undefined : filterRef.current, limit: 50 });
+      setOrders(data.orders || data.data || []);
+    } catch { }
+  }
+
+  async function handleStatus(id, status) {
+    setUpdating(id);
+    try {
+      await updateOrderStatus(id, status);
+      setOrders(prev => prev.map(o => o._id === id ? { ...o, status } : o));
+    } catch {
+      setErr("Failed to update status.");
+    } finally {
+      setUpdating(null);
     }
   }
 
@@ -99,7 +129,7 @@ export default function Orders() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--stroke)" }}>
-                {["Customer", "Type", "Items", "Total", "Time", "Status"].map(h => (
+                {["Customer", "Type", "Items", "Total", "Time", "Status", "Actions"].map(h => (
                   <th key={h} style={{
                     padding: "14px 20px", textAlign: "left",
                     fontSize: 12, fontWeight: 600, color: "var(--muted)",
@@ -145,23 +175,35 @@ export default function Orders() {
                         colors={STATUS_COLORS[o.status] || { bg: "rgba(0,0,0,0.05)", color: "#86868B" }}
                       />
                     </td>
+                    <td style={{ padding: "14px 20px" }} onClick={e => e.stopPropagation()}>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {o.status === "confirmed" && (
+                          <ActionBtn label="Preparing" color="#FF9500" loading={updating === o._id} onClick={() => handleStatus(o._id, "preparing")} />
+                        )}
+                        {o.status === "preparing" && (
+                          <ActionBtn label="Ready" color="#34C759" loading={updating === o._id} onClick={() => handleStatus(o._id, "ready")} />
+                        )}
+                        {o.status === "ready" && o.orderType === "delivery" && (
+                          <ActionBtn label="Delivered" color="#86868B" loading={updating === o._id} onClick={() => handleStatus(o._id, "delivered")} />
+                        )}
+                        {["confirmed", "preparing"].includes(o.status) && (
+                          <ActionBtn label="Cancel" color="#FF3B30" loading={updating === o._id} onClick={() => handleStatus(o._id, "cancelled")} />
+                        )}
+                      </div>
+                    </td>
                   </tr>
                   {expanded === o._id && (
-                    <tr key={`${o._id}-expanded`}>
-                      <td colSpan={6} style={{ padding: "0 20px 14px", background: "rgba(0,0,0,0.01)" }}>
+                    <tr key={`${o._id}-exp`}>
+                      <td colSpan={7} style={{ padding: "0 20px 14px", background: "rgba(0,0,0,0.01)" }}>
                         <div style={{
                           borderRadius: 10, background: "rgba(0,0,0,0.03)",
                           padding: "12px 16px", fontSize: 13,
                         }}>
                           {o.deliveryAddress && (
-                            <div style={{ marginBottom: 8, color: "var(--muted)" }}>
-                              📍 {o.deliveryAddress}
-                            </div>
+                            <div style={{ marginBottom: 8, color: "var(--muted)" }}>📍 {o.deliveryAddress}</div>
                           )}
                           {o.scheduledTime && (
-                            <div style={{ marginBottom: 8, color: "var(--muted)" }}>
-                              🕐 Pickup at {formatDateTime(o.scheduledTime)}
-                            </div>
+                            <div style={{ marginBottom: 8, color: "var(--muted)" }}>🕐 Pickup at {formatDateTime(o.scheduledTime)}</div>
                           )}
                           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                             {o.items?.map((item, idx) => (
@@ -182,5 +224,21 @@ export default function Orders() {
         )}
       </div>
     </div>
+  );
+}
+
+function ActionBtn({ label, color, onClick, loading }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      style={{
+        padding: "6px 12px", borderRadius: 8, border: "none",
+        background: color, color: "#fff", fontSize: 12,
+        fontWeight: 600, cursor: "pointer", opacity: loading ? 0.6 : 1,
+      }}
+    >
+      {label}
+    </button>
   );
 }

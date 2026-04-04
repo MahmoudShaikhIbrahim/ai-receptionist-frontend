@@ -1,9 +1,12 @@
 // src/components/Sidebar.jsx
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { IconLayoutGrid } from "@tabler/icons-react";
+import { useNotifications } from "../context/NotificationContext";
 
 export default function Sidebar() {
+  const { bookingCount, orderCount, clearBookings, clearOrders } = useNotifications();
+
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
@@ -23,8 +26,20 @@ export default function Sidebar() {
         <div className="nav__section">
           <div className="nav__title">Operations</div>
           <NavItem to="/dashboard/floor" label="Live Floor" icon={<IconLayout />} end />
-          <NavItem to="/bookings" label="Bookings" icon={<IconCalendar />} />
-          <NavItem to="/orders" label="Orders" icon={<IconBox />} />
+          <NavItem
+            to="/bookings"
+            label="Bookings"
+            icon={<IconCalendar />}
+            badge={bookingCount}
+            onActivate={clearBookings}
+          />
+          <NavItem
+            to="/orders"
+            label="Orders"
+            icon={<IconBox />}
+            badge={orderCount}
+            onActivate={clearOrders}
+          />
         </div>
 
         <div className="nav__section">
@@ -47,15 +62,33 @@ export default function Sidebar() {
   );
 }
 
-function NavItem({ to, label, icon, end = false }) {
+function NavItem({ to, label, icon, end = false, badge = 0, onActivate }) {
   return (
     <NavLink
       to={to}
       end={end}
+      onClick={onActivate}
       className={({ isActive }) => `navItem ${isActive ? "navItem--active" : ""}`}
     >
       <span className="navItem__icon" aria-hidden="true">{icon}</span>
       <span className="navItem__label">{label}</span>
+      {badge > 0 && (
+        <span style={{
+          marginLeft: "auto",
+          minWidth: 20, height: 20,
+          borderRadius: 999,
+          background: "#FF3B30",
+          color: "#fff",
+          fontSize: 11,
+          fontWeight: 700,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 5px",
+        }}>
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
     </NavLink>
   );
 }
