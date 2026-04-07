@@ -169,22 +169,28 @@ export default function Orders() {
                     </td>
                     <td style={{ padding: "14px 20px" }} onClick={e => e.stopPropagation()}>
   <div style={{ display: "flex", gap: 6 }}>
-    {o.tableId ? null : (
-      <>
-        {o.status === "confirmed" && (
-          <ActionBtn label="Preparing" color="#FF9500" loading={updating === o._id} onClick={() => handleStatus(o._id, "preparing")} />
-        )}
-        {o.status === "preparing" && (
-          <ActionBtn label="Ready" color="#34C759" loading={updating === o._id} onClick={() => handleStatus(o._id, "ready")} />
-        )}
-        {o.status === "ready" && o.orderType === "delivery" && (
-          <ActionBtn label="Delivered" color="#86868B" loading={updating === o._id} onClick={() => handleStatus(o._id, "delivered")} />
-        )}
-        {["confirmed", "preparing"].includes(o.status) && (
-          <ActionBtn label="Cancel" color="#FF3B30" loading={updating === o._id} onClick={() => handleStatus(o._id, "cancelled")} />
-        )}
-      </>
+    {o.tableId ? (
+  <>
+    {["confirmed", "preparing", "ready"].includes(o.status) && (
+      <ActionBtn label="Cancel" color="#FF3B30" loading={updating === o._id} onClick={() => handleStatus(o._id, "cancelled")} />
     )}
+  </>
+) : (
+  <>
+    {o.status === "confirmed" && (
+      <ActionBtn label="Preparing" color="#FF9500" loading={updating === o._id} onClick={() => handleStatus(o._id, "preparing")} />
+    )}
+    {o.status === "preparing" && (
+      <ActionBtn label="Ready" color="#34C759" loading={updating === o._id} onClick={() => handleStatus(o._id, "ready")} />
+    )}
+    {o.status === "ready" && o.orderType === "delivery" && (
+      <ActionBtn label="Delivered" color="#86868B" loading={updating === o._id} onClick={() => handleStatus(o._id, "delivered")} />
+    )}
+    {["confirmed", "preparing"].includes(o.status) && (
+      <ActionBtn label="Cancel" color="#FF3B30" loading={updating === o._id} onClick={() => handleStatus(o._id, "cancelled")} />
+    )}
+  </>
+)}
   </div>
 </td>
                   </tr>

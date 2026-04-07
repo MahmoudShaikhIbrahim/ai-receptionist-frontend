@@ -17,11 +17,15 @@ const SOURCE_COLORS = {
   manual: { bg: "rgba(52,199,89,0.10)", color: "#166534" },
 };
 
-function StatusPill({ status }) {
+function StatusPill({ status, source }) {
   const s = STATUS_COLORS[status] || { bg: "rgba(0,0,0,0.05)", color: "#86868B" };
+  const label = source === "manual" && status === "completed" ? "available" : status;
+  const colors = source === "manual" && status === "completed"
+    ? { bg: "rgba(52,199,89,0.12)", color: "#166534" }
+    : s;
   return (
-    <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: s.bg, color: s.color }}>
-      {status}
+    <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: colors.bg, color: colors.color }}>
+      {label}
     </span>
   );
 }
@@ -190,11 +194,13 @@ export default function Bookings() {
                   <td style={{ padding: "14px 20px", fontSize: 14 }}>{b.partySize} guests</td>
                   <td style={{ padding: "14px 20px", fontSize: 14 }}>{formatDateTime(b.startIso)}</td>
                   <td style={{ padding: "14px 20px" }}><SourcePill source={b.source} /></td>
-                  <td style={{ padding: "14px 20px" }}><StatusPill status={b.status} /></td>
+                  <td style={{ padding: "14px 20px" }}><StatusPill status={b.status} source={b.source} /></td>
                   <td style={{ padding: "14px 20px" }}>
                     <div style={{ display: "flex", gap: 6 }}>
                       {b.source === "manual" ? (
-  <ActionBtn label="Available" color="#34C759" loading={updating === b._id} onClick={() => handleStatus(b._id, "completed")} />
+  b.status !== "completed" && (
+    <ActionBtn label="Available" color="#34C759" loading={updating === b._id} onClick={() => handleStatus(b._id, "completed")} />
+  )
 ) : (
   <>
     {b.status === "confirmed" && (
