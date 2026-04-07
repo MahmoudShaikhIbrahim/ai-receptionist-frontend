@@ -13,6 +13,7 @@ export default function FloorLive() {
   const [showPanel, setShowPanel] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [showPanelView, setShowPanelView] = useState("order");
 
   const intervalRef = useRef(null);
   const mountedRef = useRef(true);
@@ -122,6 +123,7 @@ export default function FloorLive() {
       {showPanel && (
   <TableDetailsPanel
     table={selectedTable}
+    initialView={showPanelView}
     onClose={closeModal}
   />
 )}
@@ -196,13 +198,13 @@ export default function FloorLive() {
 
               {/* TABLE ORDER — only for seated tables */}
               {selectedTable.status === "seated" && (
-                <button
-                  onClick={() => setShowPanel(true)}
-                  style={{ flex: 1, padding: "12px", borderRadius: 14, border: "none", background: "#0071E3", color: "#FFFFFF", fontWeight: 700, cursor: "pointer" }}
-                >
-                  🍽 Table Order
-                </button>
-              )}
+  <button
+    onClick={() => { setShowPanel(true); setShowPanelView("order"); }}
+    style={{ flex: 1, padding: "12px", borderRadius: 14, border: "none", background: "#0071E3", color: "#FFFFFF", fontWeight: 700, cursor: "pointer" }}
+  >
+    🍽 Table Order
+  </button>
+)}
 
               {/* CANCEL */}
               {selectedTable.status !== "seated" && (
