@@ -19,10 +19,7 @@ const TYPE_COLORS = {
 
 function Pill({ label, colors }) {
   return (
-    <span style={{
-      padding: "4px 10px", borderRadius: 999, fontSize: 12,
-      fontWeight: 600, background: colors.bg, color: colors.color,
-    }}>
+    <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: colors.bg, color: colors.color }}>
       {label}
     </span>
   );
@@ -34,6 +31,7 @@ function formatDateTime(dt) {
     return new Date(dt).toLocaleString("en-US", {
       month: "short", day: "numeric",
       hour: "numeric", minute: "2-digit", hour12: true,
+      timeZone: "Asia/Dubai",
     });
   } catch { return "—"; }
 }
@@ -49,9 +47,7 @@ export default function Orders() {
   const filterRef = useRef(filter);
   filterRef.current = filter;
 
-  useEffect(() => {
-    clearOrders();
-  }, []);
+  useEffect(() => { clearOrders(); }, []);
 
   useEffect(() => {
     load();
@@ -130,11 +126,7 @@ export default function Orders() {
             <thead>
               <tr style={{ borderBottom: "1px solid var(--stroke)" }}>
                 {["Customer", "Type", "Items", "Total", "Time", "Status", "Actions"].map(h => (
-                  <th key={h} style={{
-                    padding: "14px 20px", textAlign: "left",
-                    fontSize: 12, fontWeight: 600, color: "var(--muted)",
-                    textTransform: "uppercase", letterSpacing: "0.06em",
-                  }}>{h}</th>
+                  <th key={h} style={{ padding: "14px 20px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -144,11 +136,7 @@ export default function Orders() {
                   <tr
                     key={o._id}
                     onClick={() => setExpanded(expanded === o._id ? null : o._id)}
-                    style={{
-                      borderBottom: i < orders.length - 1 ? "1px solid var(--stroke)" : "none",
-                      cursor: "pointer",
-                      transition: "background 150ms",
-                    }}
+                    style={{ borderBottom: i < orders.length - 1 ? "1px solid var(--stroke)" : "none", cursor: "pointer", transition: "background 150ms" }}
                     onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.02)"}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                   >
@@ -161,13 +149,17 @@ export default function Orders() {
                         label={o.orderType === "dineIn" ? "Dine-in" : o.orderType}
                         colors={TYPE_COLORS[o.orderType] || { bg: "rgba(0,0,0,0.05)", color: "#86868B" }}
                       />
+                      {o.tableLabel && (
+                        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>🪑 {o.tableLabel}</div>
+                      )}
                     </td>
                     <td style={{ padding: "14px 20px", fontSize: 14, color: "var(--muted)" }}>
-                      {o.items?.length || 0} item{o.items?.length !== 1 ? "s" : ""}
+                      {o.rounds?.length > 0
+                        ? `${o.rounds.length} round${o.rounds.length > 1 ? "s" : ""}`
+                        : `${o.items?.length || 0} item${o.items?.length !== 1 ? "s" : ""}`
+                      }
                     </td>
-                    <td style={{ padding: "14px 20px", fontSize: 14, fontWeight: 600 }}>
-                      {o.total} AED
-                    </td>
+                    <td style={{ padding: "14px 20px", fontSize: 14, fontWeight: 600 }}>{o.total} AED</td>
                     <td style={{ padding: "14px 20px", fontSize: 14 }}>{formatDateTime(o.createdAt)}</td>
                     <td style={{ padding: "14px 20px" }}>
                       <Pill
@@ -192,27 +184,56 @@ export default function Orders() {
                       </div>
                     </td>
                   </tr>
+
+                  {/* Expanded row */}
                   {expanded === o._id && (
                     <tr key={`${o._id}-exp`}>
                       <td colSpan={7} style={{ padding: "0 20px 14px", background: "rgba(0,0,0,0.01)" }}>
-                        <div style={{
-                          borderRadius: 10, background: "rgba(0,0,0,0.03)",
-                          padding: "12px 16px", fontSize: 13,
-                        }}>
+                        <div style={{ borderRadius: 10, background: "rgba(0,0,0,0.03)", padding: "12px 16px", fontSize: 13 }}>
                           {o.deliveryAddress && (
                             <div style={{ marginBottom: 8, color: "var(--muted)" }}>📍 {o.deliveryAddress}</div>
                           )}
                           {o.scheduledTime && (
                             <div style={{ marginBottom: 8, color: "var(--muted)" }}>🕐 Pickup at {formatDateTime(o.scheduledTime)}</div>
                           )}
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                            {o.items?.map((item, idx) => (
-                              <div key={idx} style={{ display: "flex", justifyContent: "space-between" }}>
-                                <span>{item.name} × {item.quantity}</span>
-                                <span style={{ fontWeight: 600 }}>{item.price * item.quantity} AED</span>
+
+                          {/* Rounds display */}
+                          {o.rounds?.length > 0 ? (
+                            o.rounds.map((round, idx) => (
+                              <div key={round._id || idx} style={{ marginBottom: 14 }}>
+                                <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                                  Round {idx + 1} — {formatDateTime(round.sentAt)}
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                  {round.items.map((item, i) => (
+                                    <div key={i}>
+                                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                        <span>{item.name} × {item.quantity}</span>
+                                        <span style={{ fontWeight: 600 }}>{(item.price * item.quantity).toFixed(2)} AED</span>
+                                      </div>
+                                      {item.notes && (
+                                        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>📝 {item.notes}</div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            ))}
-                          </div>
+                            ))
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                              {o.items?.map((item, idx) => (
+                                <div key={idx}>
+                                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                    <span>{item.name} × {item.quantity}</span>
+                                    <span style={{ fontWeight: 600 }}>{(item.price * item.quantity).toFixed(2)} AED</span>
+                                  </div>
+                                  {item.notes && (
+                                    <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>📝 {item.notes}</div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -232,11 +253,7 @@ function ActionBtn({ label, color, onClick, loading }) {
     <button
       onClick={onClick}
       disabled={loading}
-      style={{
-        padding: "6px 12px", borderRadius: 8, border: "none",
-        background: color, color: "#fff", fontSize: 12,
-        fontWeight: 600, cursor: "pointer", opacity: loading ? 0.6 : 1,
-      }}
+      style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: color, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: loading ? 0.6 : 1 }}
     >
       {label}
     </button>
