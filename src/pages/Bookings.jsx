@@ -69,7 +69,7 @@ export default function Bookings() {
     try {
       setLoading(true);
       const data = await getBookings({ status: filter === "all" ? undefined : filter, limit: 50 });
-      setBookings(data.bookings || data.data || []);
+      setBookings((data.bookings || data.data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     } catch {
       setErr("Failed to load bookings.");
     } finally {
@@ -80,7 +80,7 @@ export default function Bookings() {
   async function silentLoad() {
     try {
       const data = await getBookings({ status: filterRef.current === "all" ? undefined : filterRef.current, limit: 50 });
-      setBookings(data.bookings || data.data || []);
+      setBookings((data.bookings || data.data || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
     } catch { }
   }
 
@@ -193,18 +193,24 @@ export default function Bookings() {
                   <td style={{ padding: "14px 20px" }}><StatusPill status={b.status} /></td>
                   <td style={{ padding: "14px 20px" }}>
                     <div style={{ display: "flex", gap: 6 }}>
-                      {b.status === "confirmed" && (
-                        <ActionBtn label="Seat" color="#0071E3" loading={updating === b._id} onClick={() => handleStatus(b._id, "seated")} />
-                      )}
-                      {["confirmed", "seated"].includes(b.status) && (
-                        <ActionBtn label="Cancel" color="#FF3B30" loading={updating === b._id} onClick={() => handleStatus(b._id, "cancelled")} />
-                      )}
-                      {b.status === "seated" && (
-                        <ActionBtn label="Complete" color="#34C759" loading={updating === b._id} onClick={() => handleStatus(b._id, "completed")} />
-                      )}
-                      {["confirmed", "seated"].includes(b.status) && (
-                        <ActionBtn label="No-show" color="#FF9500" loading={updating === b._id} onClick={() => handleStatus(b._id, "no_show")} />
-                      )}
+                      {b.source === "manual" ? (
+  <ActionBtn label="Available" color="#34C759" loading={updating === b._id} onClick={() => handleStatus(b._id, "completed")} />
+) : (
+  <>
+    {b.status === "confirmed" && (
+      <ActionBtn label="Seat" color="#0071E3" loading={updating === b._id} onClick={() => handleStatus(b._id, "seated")} />
+    )}
+    {["confirmed", "seated"].includes(b.status) && (
+      <ActionBtn label="Cancel" color="#FF3B30" loading={updating === b._id} onClick={() => handleStatus(b._id, "cancelled")} />
+    )}
+    {b.status === "seated" && (
+      <ActionBtn label="Complete" color="#34C759" loading={updating === b._id} onClick={() => handleStatus(b._id, "completed")} />
+    )}
+    {["confirmed", "seated"].includes(b.status) && (
+      <ActionBtn label="No-show" color="#FF9500" loading={updating === b._id} onClick={() => handleStatus(b._id, "no_show")} />
+    )}
+  </>
+)}
                     </div>
                   </td>
                 </tr>
