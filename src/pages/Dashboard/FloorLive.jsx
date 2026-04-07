@@ -119,10 +119,12 @@ export default function FloorLive() {
       )}
 
       {/* TableDetailsPanel — only shows, no modal blocking it */}
-      <TableDetailsPanel
-        table={selectedTable}
-        onClose={closeModal}
-      />
+      {showPanel && (
+  <TableDetailsPanel
+    table={selectedTable}
+    onClose={closeModal}
+  />
+)}
 
       {/* Action Modal — only for Available / Walk-in / Maintenance */}
       {selectedTable && !showPanel && (
