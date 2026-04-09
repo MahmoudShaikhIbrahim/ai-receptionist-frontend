@@ -39,7 +39,9 @@ export default function Sidebar() {
             icon={<IconBox />}
             badge={orderCount}
             onActivate={clearOrders}
+            end
           />
+          
           <NavItem
             to="/orders/manual"
             label="Manual Orders"
