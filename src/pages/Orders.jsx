@@ -186,9 +186,6 @@ export default function Orders() {
     {o.status === "ready" && o.orderType === "delivery" && (
       <ActionBtn label="Delivered" color="#86868B" loading={updating === o._id} onClick={() => handleStatus(o._id, "delivered")} />
     )}
-    {["confirmed", "preparing"].includes(o.status) && (
-      <ActionBtn label="Cancel" color="#FF3B30" loading={updating === o._id} onClick={() => handleStatus(o._id, "cancelled")} />
-    )}
   </>
 )}
   </div>

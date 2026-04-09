@@ -544,15 +544,15 @@ export default function ManualOrders() {
 
                         {/* Action buttons */}
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          {order.status === "confirmed" && (
-                            <button
-                              onClick={() => handleStatus(order._id, "cancelled")}
-                              disabled={updatingId === order._id}
-                              style={dangerBtn}
-                            >
-                              Cancel Order
-                            </button>
-                          )}
+                          {["confirmed", "preparing"].includes(order.status) && (
+  <button
+    onClick={() => handleStatus(order._id, "cancelled")}
+    disabled={updatingId === order._id}
+    style={dangerBtn}
+  >
+    Cancel Order
+  </button>
+)}
                           {order.status === "ready" && (
                             <button
                               onClick={() => handleComplete(order._id)}
