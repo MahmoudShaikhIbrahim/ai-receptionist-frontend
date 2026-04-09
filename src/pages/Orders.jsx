@@ -91,8 +91,8 @@ export default function Orders() {
   return (
     <div className="page">
       <div>
-        <h1 className="pageTitle">Orders</h1>
-        <p className="pageSubtitle">View all pickup, delivery and dine-in orders.</p>
+        <h1 className="pageTitle">Kitchen</h1>
+        <p className="pageSubtitle">View and manage all incoming orders.</p>
       </div>
 
       {err && <div className="alert alert--error">{err}</div>}
@@ -154,11 +154,24 @@ export default function Orders() {
                       )}
                     </td>
                     <td style={{ padding: "14px 20px", fontSize: 14, color: "var(--muted)" }}>
-                      {o.rounds?.length > 0
-                        ? `${o.rounds.length} round${o.rounds.length > 1 ? "s" : ""}`
-                        : `${o.items?.length || 0} item${o.items?.length !== 1 ? "s" : ""}`
-                      }
-                    </td>
+  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+    {o.rounds?.length > 0
+      ? `${o.rounds.length} round${o.rounds.length > 1 ? "s" : ""}`
+      : `${o.items?.length || 0} item${o.items?.length !== 1 ? "s" : ""}`
+    }
+    {/* ✅ New round badge — shows when order is being updated */}
+    {o.tableId && o.status === "preparing" && o.rounds?.length > 1 && (
+      <span style={{
+        padding: "2px 8px", borderRadius: 999,
+        background: "rgba(255,149,0,0.15)",
+        color: "#92400E",
+        fontSize: 11, fontWeight: 700,
+      }}>
+        +New Round
+      </span>
+    )}
+  </div>
+</td>
                     <td style={{ padding: "14px 20px", fontSize: 14, fontWeight: 600 }}>{o.total} AED</td>
                     <td style={{ padding: "14px 20px", fontSize: 14 }}>{formatDateTime(o.createdAt)}</td>
                     <td style={{ padding: "14px 20px" }}>
@@ -169,25 +182,27 @@ export default function Orders() {
                     </td>
                     <td style={{ padding: "14px 20px" }} onClick={e => e.stopPropagation()}>
   <div style={{ display: "flex", gap: 6 }}>
+    {/* ✅ Dine-in table orders: Preparing + Ready, no Cancel */}
     {o.tableId ? (
-  <>
-    {["confirmed", "preparing", "ready"].includes(o.status) && (
-      <ActionBtn label="Cancel" color="#FF3B30" loading={updating === o._id} onClick={() => handleStatus(o._id, "cancelled")} />
+      <>
+        {o.status === "confirmed" && (
+          <ActionBtn label="Preparing" color="#FF9500" loading={updating === o._id} onClick={() => handleStatus(o._id, "preparing")} />
+        )}
+        {o.status === "preparing" && (
+          <ActionBtn label="Ready" color="#34C759" loading={updating === o._id} onClick={() => handleStatus(o._id, "ready")} />
+        )}
+      </>
+    ) : (
+      /* ✅ Manual orders: Preparing + Ready only, Cancel is in Manual Orders */
+      <>
+        {o.status === "confirmed" && (
+          <ActionBtn label="Preparing" color="#FF9500" loading={updating === o._id} onClick={() => handleStatus(o._id, "preparing")} />
+        )}
+        {o.status === "preparing" && (
+          <ActionBtn label="Ready" color="#34C759" loading={updating === o._id} onClick={() => handleStatus(o._id, "ready")} />
+        )}
+      </>
     )}
-  </>
-) : (
-  <>
-    {o.status === "confirmed" && (
-      <ActionBtn label="Preparing" color="#FF9500" loading={updating === o._id} onClick={() => handleStatus(o._id, "preparing")} />
-    )}
-    {o.status === "preparing" && (
-      <ActionBtn label="Ready" color="#34C759" loading={updating === o._id} onClick={() => handleStatus(o._id, "ready")} />
-    )}
-    {o.status === "ready" && o.orderType === "delivery" && (
-      <ActionBtn label="Delivered" color="#86868B" loading={updating === o._id} onClick={() => handleStatus(o._id, "delivered")} />
-    )}
-  </>
-)}
   </div>
 </td>
                   </tr>

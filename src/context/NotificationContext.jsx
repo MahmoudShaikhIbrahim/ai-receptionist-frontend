@@ -15,6 +15,7 @@ export function NotificationProvider({ children }) {
   const [orderCount, setOrderCount] = useState(0);
   const lastBookingIds = useRef(new Set());
   const lastOrderIds = useRef(new Set());
+  const lastOrderRoundCounts = useRef(new Map()); // ✅ track round counts per order
   const initialized = useRef(false);
 
   function clearBookings() { setBookingCount(0); }
@@ -33,23 +34,33 @@ export function NotificationProvider({ children }) {
         const bookings = bookingData.bookings || bookingData.data || [];
         const orders = orderData.orders || orderData.data || [];
 
-        // Exclude manual/walk-in bookings from notifications
+        // Only AI bookings for booking notifications
         const aiBookings = bookings.filter(b => b.source !== "manual");
 
-        // Exclude table orders (manual orders placed by staff) from notifications
-        const aiOrders = orders.filter(o => !o.tableId);
+        // ✅ Include ALL active orders for kitchen notifications
+        // (table dine-in + manual pickup/delivery, exclude completed/cancelled)
+        const kitchenOrders = orders.filter(o =>
+          ["confirmed", "preparing", "ready"].includes(o.status)
+        );
 
         const newBookingIds = new Set(aiBookings.map(b => b._id));
-        const newOrderIds = new Set(aiOrders.map(o => o._id));
+        const newOrderIds = new Set(kitchenOrders.map(o => o._id));
 
         if (!initialized.current) {
           lastBookingIds.current = newBookingIds;
           lastOrderIds.current = newOrderIds;
+          // ✅ Initialize round counts
+          for (const order of kitchenOrders) {
+            lastOrderRoundCounts.current.set(
+              String(order._id),
+              order.rounds?.length || 0
+            );
+          }
           initialized.current = true;
           return;
         }
 
-        // Count new AI bookings only
+        // Count new bookings
         let newBookings = 0;
         for (const id of newBookingIds) {
           if (!lastBookingIds.current.has(id)) newBookings++;
@@ -57,11 +68,34 @@ export function NotificationProvider({ children }) {
         if (newBookings > 0) setBookingCount(prev => prev + newBookings);
         lastBookingIds.current = newBookingIds;
 
-        // Count new AI orders only
+        // Count new orders AND new rounds on existing orders
         let newOrders = 0;
-        for (const id of newOrderIds) {
-          if (!lastOrderIds.current.has(id)) newOrders++;
+        for (const order of kitchenOrders) {
+          const id = String(order._id);
+          const currentRounds = order.rounds?.length || 0;
+
+          if (!lastOrderIds.current.has(id)) {
+            // Brand new order
+            newOrders++;
+          } else {
+            // Existing order — check if a new round was added
+            const prevRounds = lastOrderRoundCounts.current.get(id) || 0;
+            if (currentRounds > prevRounds) {
+              newOrders++; // ✅ New round = new notification
+            }
+          }
+
+          // Update round count
+          lastOrderRoundCounts.current.set(id, currentRounds);
         }
+
+        // Clean up round counts for orders no longer active
+        for (const id of lastOrderRoundCounts.current.keys()) {
+          if (!newOrderIds.has(id)) {
+            lastOrderRoundCounts.current.delete(id);
+          }
+        }
+
         if (newOrders > 0) setOrderCount(prev => prev + newOrders);
         lastOrderIds.current = newOrderIds;
 

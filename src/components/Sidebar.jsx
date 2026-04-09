@@ -34,18 +34,17 @@ export default function Sidebar() {
             onActivate={clearBookings}
           />
           <NavItem
+            to="/orders/manual"
+            label="Manual Orders"
+            icon={<IconBag />}
+          />
+          <NavItem
             to="/orders"
-            label="Orders"
+            label="Kitchen"
             icon={<IconBox />}
             badge={orderCount}
             onActivate={clearOrders}
             end
-          />
-          
-          <NavItem
-            to="/orders/manual"
-            label="Manual Orders"
-            icon={<IconBag />}
           />
         </div>
 
