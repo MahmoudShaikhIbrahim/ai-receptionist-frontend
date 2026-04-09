@@ -11,6 +11,7 @@ import FloorLive from "./pages/Dashboard/FloorLive";
 import FloorLayoutPage from "./pages/Settings/FloorLayoutPage";
 import Bookings from "./pages/Bookings";
 import Orders from "./pages/Orders";
+import ManualOrders from "./pages/ManualOrders";
 import DashboardLayout from "./layouts/DashboardLayout";
 import BusinessSettings from "./pages/Settings/BusinessSettings";
 import AgentSettings from "./pages/Settings/AgentSettings";
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/dashboard/floor/layout" element={<ProtectedRoute><DashboardLayout><FloorLayoutPage /></DashboardLayout></ProtectedRoute>} />
             <Route path="/bookings" element={<ProtectedRoute><DashboardLayout><Bookings /></DashboardLayout></ProtectedRoute>} />
             <Route path="/orders" element={<ProtectedRoute><DashboardLayout><Orders /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/orders/manual" element={<ProtectedRoute><DashboardLayout><ManualOrders /></DashboardLayout></ProtectedRoute>} />
             <Route path="/settings/business" element={<ProtectedRoute><DashboardLayout><BusinessSettings /></DashboardLayout></ProtectedRoute>} />
             <Route path="/settings/agent" element={<ProtectedRoute><DashboardLayout><AgentSettings /></DashboardLayout></ProtectedRoute>} />
             <Route path="/settings/menu" element={<ProtectedRoute><DashboardLayout><MenuSettings /></DashboardLayout></ProtectedRoute>} />

@@ -1,3 +1,5 @@
+// src/api/business.js
+
 import apiClient, { cachedGet, invalidateCache } from "./client";
 
 export async function getBusinessMe() {
