@@ -33,8 +33,14 @@ export function NotificationProvider({ children }) {
         const bookings = bookingData.bookings || bookingData.data || [];
         const orders = orderData.orders || orderData.data || [];
 
-        const newBookingIds = new Set(bookings.map(b => b._id));
-        const newOrderIds = new Set(orders.map(o => o._id));
+        // Exclude manual/walk-in bookings from notifications
+        const aiBookings = bookings.filter(b => b.source !== "manual");
+
+        // Exclude table orders (manual orders placed by staff) from notifications
+        const aiOrders = orders.filter(o => !o.tableId);
+
+        const newBookingIds = new Set(aiBookings.map(b => b._id));
+        const newOrderIds = new Set(aiOrders.map(o => o._id));
 
         if (!initialized.current) {
           lastBookingIds.current = newBookingIds;
@@ -43,7 +49,7 @@ export function NotificationProvider({ children }) {
           return;
         }
 
-        // Count new bookings
+        // Count new AI bookings only
         let newBookings = 0;
         for (const id of newBookingIds) {
           if (!lastBookingIds.current.has(id)) newBookings++;
@@ -51,7 +57,7 @@ export function NotificationProvider({ children }) {
         if (newBookings > 0) setBookingCount(prev => prev + newBookings);
         lastBookingIds.current = newBookingIds;
 
-        // Count new orders
+        // Count new AI orders only
         let newOrders = 0;
         for (const id of newOrderIds) {
           if (!lastOrderIds.current.has(id)) newOrders++;
