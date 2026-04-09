@@ -43,6 +43,7 @@ export default function Orders() {
   const [filter, setFilter] = useState("all");
   const [expanded, setExpanded] = useState(null);
   const [updating, setUpdating] = useState(null);
+  const [seenRounds, setSeenRounds] = useState({}); // ✅ tracks last seen round count per order
   const { clearOrders } = useNotifications();
   const filterRef = useRef(filter);
   filterRef.current = filter;
@@ -135,7 +136,11 @@ export default function Orders() {
                 <>
                   <tr
                     key={o._id}
-                    onClick={() => setExpanded(expanded === o._id ? null : o._id)}
+                    onClick={() => {
+                      setExpanded(expanded === o._id ? null : o._id);
+                      // ✅ Mark rounds as seen when kitchen clicks the row
+                      setSeenRounds(prev => ({ ...prev, [o._id]: o.rounds?.length || 0 }));
+                    }}
                     style={{ borderBottom: i < orders.length - 1 ? "1px solid var(--stroke)" : "none", cursor: "pointer", transition: "background 150ms" }}
                     onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.02)"}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}
@@ -153,25 +158,39 @@ export default function Orders() {
                         <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>🪑 {o.tableLabel}</div>
                       )}
                     </td>
-                    <td style={{ padding: "14px 20px", fontSize: 14, color: "var(--muted)" }}>
-  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-    {o.rounds?.length > 0
-      ? `${o.rounds.length} round${o.rounds.length > 1 ? "s" : ""}`
-      : `${o.items?.length || 0} item${o.items?.length !== 1 ? "s" : ""}`
-    }
-    {/* ✅ New round badge — shows when order is being updated */}
-    {o.tableId && o.status === "preparing" && o.rounds?.length > 1 && (
-      <span style={{
-        padding: "2px 8px", borderRadius: 999,
-        background: "rgba(255,149,0,0.15)",
-        color: "#92400E",
-        fontSize: 11, fontWeight: 700,
-      }}>
-        +New Round
-      </span>
-    )}
-  </div>
-</td>
+                   <td style={{ padding: "14px 20px", fontSize: 14, color: "var(--muted)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {(() => {
+                          // ✅ Count total items across all rounds
+                          const totalItems = o.rounds?.length > 0
+                            ? o.rounds.reduce((sum, r) => sum + (r.items?.length || 0), 0)
+                            : o.items?.length || 0;
+                          return `${totalItems} item${totalItems !== 1 ? "s" : ""}`;
+                        })()}
+                        {/* ✅ New items badge — shows when new round added since kitchen last clicked */}
+                        {(() => {
+                          const currentRounds = o.rounds?.length || 0;
+                          const seen = seenRounds[o._id] ?? null;
+                          // Show badge if: order has rounds, and kitchen hasn't seen latest round
+                          const hasNewItems = currentRounds > 0 && (
+                            seen === null ? currentRounds > 1 : currentRounds > seen
+                          );
+                          if (!hasNewItems) return null;
+                          const newRoundsCount = seen === null ? currentRounds - 1 : currentRounds - seen;
+                          return (
+                            <span style={{
+                              padding: "3px 9px", borderRadius: 999,
+                              background: "rgba(255,149,0,0.15)",
+                              color: "#C2410C",
+                              fontSize: 11, fontWeight: 700,
+                              whiteSpace: "nowrap",
+                            }}>
+                              +{newRoundsCount} new item{newRoundsCount !== 1 ? "s" : ""} added
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </td>
                     <td style={{ padding: "14px 20px", fontSize: 14, fontWeight: 600 }}>{o.total} AED</td>
                     <td style={{ padding: "14px 20px", fontSize: 14 }}>{formatDateTime(o.createdAt)}</td>
                     <td style={{ padding: "14px 20px" }}>
