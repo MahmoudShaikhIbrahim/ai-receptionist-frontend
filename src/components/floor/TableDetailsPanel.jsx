@@ -107,7 +107,14 @@ export default function TableDetailsPanel({ table, onClose, initialView = "order
     const res = await apiClient.delete(`/orders/table/${currentOrder._id}/item`, {
       data: { roundIndex, itemIndex }
     });
-    setCurrentOrder(res.data.order);
+    const updatedOrder = res.data.order;
+
+    // ✅ FIX 1: If all items removed, order is auto-cancelled — clear the panel
+    if (updatedOrder.status === "cancelled") {
+      setCurrentOrder(null);
+    } else {
+      setCurrentOrder(updatedOrder);
+    }
   } catch {
     alert("Failed to cancel item");
   }
