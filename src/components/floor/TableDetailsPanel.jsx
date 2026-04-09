@@ -101,6 +101,18 @@ export default function TableDetailsPanel({ table, onClose, initialView = "order
     }
   }
 
+  async function handleCancelItem(roundIndex, itemIndex) {
+  if (!currentOrder?._id) return;
+  try {
+    const res = await apiClient.delete(`/orders/table/${currentOrder._id}/item`, {
+      data: { roundIndex, itemIndex }
+    });
+    setCurrentOrder(res.data.order);
+  } catch {
+    alert("Failed to cancel item");
+  }
+}
+
   // Bill calculations — based on all rounds in currentOrder
   const allRounds = currentOrder?.rounds || [];
   const billItems = allRounds.flatMap(r => r.items);
@@ -152,11 +164,18 @@ export default function TableDetailsPanel({ table, onClose, initialView = "order
                       Round {idx + 1} · {new Date(round.sentAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Dubai" })}
                     </div>
                     {round.items.map((item, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-                        <span>{item.name} × {item.quantity}{item.notes ? ` · ${item.notes}` : ""}</span>
-                        <span style={{ fontWeight: 600 }}>{(item.price * item.quantity).toFixed(2)} AED</span>
-                      </div>
-                    ))}
+  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, marginBottom: 4 }}>
+    <span>{item.name} × {item.quantity}{item.notes ? ` · ${item.notes}` : ""}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{ fontWeight: 600 }}>{(item.price * item.quantity).toFixed(2)} AED</span>
+      <button
+        onClick={() => handleCancelItem(idx, i)}
+        style={{ width: 22, height: 22, borderRadius: 6, border: "none", background: "rgba(255,59,48,0.12)", color: "#FF3B30", cursor: "pointer", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}
+        title="Cancel item"
+      >×</button>
+    </div>
+  </div>
+))}
                   </div>
                 ))}
                 <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "12px 0" }} />
