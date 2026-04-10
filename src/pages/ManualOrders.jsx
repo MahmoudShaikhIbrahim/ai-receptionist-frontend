@@ -1,5 +1,5 @@
 // src/pages/ManualOrders.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getAgentMe } from "../api/api";
 import { getBusinessMe } from "../api/business";
 import apiClient from "../api/client";
@@ -16,6 +16,269 @@ const STATUS_COLORS = {
   ready:     { bg: "rgba(52,199,89,0.12)", color: "#166534" },
 };
 
+// ── UAE Locations ──────────────────────────────────────────
+const UAE_LOCATIONS = [
+  // Dubai Areas
+  "Downtown Dubai", "Dubai Marina", "Jumeirah Beach Residence (JBR)", "Palm Jumeirah",
+  "Business Bay", "DIFC", "Deira", "Bur Dubai", "Jumeirah", "Al Quoz",
+  "Al Barsha", "Mirdif", "Karama", "Satwa", "Oud Metha", "Al Nahda Dubai",
+  "Discovery Gardens", "International City", "Dubai Silicon Oasis", "Academic City",
+  "Dubai Hills Estate", "Mohammed Bin Rashid City", "Jumeirah Village Circle (JVC)",
+  "Jumeirah Village Triangle (JVT)", "Dubai Sports City", "Motor City", "Arabian Ranches",
+  "Emirates Hills", "The Meadows", "The Springs", "The Lakes", "The Greens",
+  "Dubai Internet City", "Dubai Media City", "Dubai Knowledge Park", "Tecom",
+  "Al Furjan", "Dubai South", "Town Square", "Reem", "Mudon", "Damac Hills",
+  "Al Warqa", "Rashidiya", "Muhaisnah", "Al Qusais", "Al Twar", "Al Mizhar",
+  "Umm Suqeim", "Umm Ramool", "Festival City", "Ras Al Khor", "Jebel Ali",
+  "Dubai Investments Park", "Al Khawaneej", "Nad Al Sheba", "Meydan",
+  // Abu Dhabi Areas
+  "Abu Dhabi City Centre", "Al Reem Island", "Saadiyat Island", "Yas Island",
+  "Al Khalidiyah", "Al Mushrif", "Al Karama Abu Dhabi", "Al Nahyan",
+  "Corniche Abu Dhabi", "Al Bateen", "Khalifa City A", "Khalifa City B",
+  "Mohammed Bin Zayed City", "Baniyas", "Al Reef", "Masdar City",
+  "Al Raha Beach", "Al Ghadeer", "Shakhbout City", "Al Shamkha",
+  // Sharjah
+  "Sharjah City", "Al Majaz", "Al Nahda Sharjah", "Muwaileh", "Al Qasimia",
+  "Al Taawun", "Al Khan", "Al Yarmook", "Al Suyoh", "Al Zahia", "University City Sharjah",
+  // Ajman
+  "Ajman City", "Al Nuaimiyah", "Al Rashidiya Ajman", "Al Jurf", "Al Hamidiya",
+  // Ras Al Khaimah
+  "Ras Al Khaimah City", "Al Hamra Village", "Mina Al Arab", "Al Marjan Island",
+  // Fujairah
+  "Fujairah City", "Dibba Al Fujairah", "Khor Fakkan",
+  // Umm Al Quwain
+  "Umm Al Quwain City",
+];
+
+// ── Luxury Time Picker Component ──────────────────────────
+function LuxuryTimePicker({ value, onChange, label }) {
+  const now = new Date();
+  const [date, setDate] = useState(() => {
+    if (value) return value.split("T")[0];
+    return now.toISOString().split("T")[0];
+  });
+  const [hour, setHour] = useState(() => {
+    if (value) {
+      const h = parseInt(value.split("T")[1]?.split(":")[0] || "12");
+      return h % 12 === 0 ? 12 : h % 12;
+    }
+    const h = now.getHours();
+    return h % 12 === 0 ? 12 : h % 12;
+  });
+  const [minute, setMinute] = useState(() => {
+    if (value) return parseInt(value.split("T")[1]?.split(":")[1] || "0");
+    return Math.ceil(now.getMinutes() / 15) * 15 % 60;
+  });
+  const [ampm, setAmpm] = useState(() => {
+    if (value) return parseInt(value.split("T")[1]?.split(":")[0] || "12") >= 12 ? "PM" : "AM";
+    return now.getHours() >= 12 ? "PM" : "AM";
+  });
+
+  // Generate next 14 days
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    return {
+      value: d.toISOString().split("T")[0],
+      label: i === 0 ? "Today" : i === 1 ? "Tomorrow" : d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+    };
+  });
+
+  const hours = Array.from({ length: 12 }, (_, i) => i + 1);
+  const minutes = [0, 15, 30, 45];
+
+  useEffect(() => {
+    const h24 = ampm === "PM" ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour);
+    const iso = `${date}T${String(h24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    onChange(iso);
+  }, [date, hour, minute, ampm]);
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label style={{ fontSize: 12, color: "#86868B", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 10 }}>
+        {label}
+      </label>
+
+      {/* Date selector */}
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 11, color: "#86868B", fontWeight: 600, marginBottom: 6 }}>DATE</div>
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
+          {days.map(d => (
+            <button
+              key={d.value}
+              onClick={() => setDate(d.value)}
+              style={{
+                padding: "8px 14px", borderRadius: 10, border: "1.5px solid",
+                borderColor: date === d.value ? "#0071E3" : "rgba(0,0,0,0.10)",
+                background: date === d.value ? "rgba(0,113,227,0.08)" : "#fff",
+                color: date === d.value ? "#0071E3" : "#1D1D1F",
+                fontWeight: date === d.value ? 700 : 500,
+                fontSize: 12, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+              }}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Time selector */}
+      <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+        {/* Hour */}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: "#86868B", fontWeight: 600, marginBottom: 6 }}>HOUR</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+            {hours.map(h => (
+              <button
+                key={h}
+                onClick={() => setHour(h)}
+                style={{
+                  width: 38, height: 38, borderRadius: 10, border: "1.5px solid",
+                  borderColor: hour === h ? "#0071E3" : "rgba(0,0,0,0.10)",
+                  background: hour === h ? "#0071E3" : "#fff",
+                  color: hour === h ? "#fff" : "#1D1D1F",
+                  fontWeight: 700, fontSize: 13, cursor: "pointer",
+                }}
+              >
+                {h}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Minute */}
+        <div>
+          <div style={{ fontSize: 11, color: "#86868B", fontWeight: 600, marginBottom: 6 }}>MIN</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {minutes.map(m => (
+              <button
+                key={m}
+                onClick={() => setMinute(m)}
+                style={{
+                  width: 48, height: 32, borderRadius: 8, border: "1.5px solid",
+                  borderColor: minute === m ? "#0071E3" : "rgba(0,0,0,0.10)",
+                  background: minute === m ? "#0071E3" : "#fff",
+                  color: minute === m ? "#fff" : "#1D1D1F",
+                  fontWeight: 700, fontSize: 13, cursor: "pointer",
+                }}
+              >
+                :{String(m).padStart(2, "0")}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* AM/PM */}
+        <div>
+          <div style={{ fontSize: 11, color: "#86868B", fontWeight: 600, marginBottom: 6 }}>AM/PM</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            {["AM", "PM"].map(p => (
+              <button
+                key={p}
+                onClick={() => setAmpm(p)}
+                style={{
+                  width: 52, height: 32, borderRadius: 8, border: "1.5px solid",
+                  borderColor: ampm === p ? "#0071E3" : "rgba(0,0,0,0.10)",
+                  background: ampm === p ? "#0071E3" : "#fff",
+                  color: ampm === p ? "#fff" : "#1D1D1F",
+                  fontWeight: 700, fontSize: 13, cursor: "pointer",
+                }}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Preview */}
+      {value && (
+        <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "rgba(0,113,227,0.06)", fontSize: 13, fontWeight: 600, color: "#0071E3" }}>
+          ⏰ {days.find(d => d.value === date)?.label} · {hour}:{String(minute).padStart(2, "0")} {ampm}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── UAE Address Autocomplete ───────────────────────────────
+function UAEAddressInput({ value, onChange }) {
+  const [query, setQuery] = useState(value || "");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [filtered, setFiltered] = useState([]);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setShowDropdown(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function handleChange(e) {
+    const val = e.target.value;
+    setQuery(val);
+    onChange(val);
+    if (val.length >= 2) {
+      setFiltered(UAE_LOCATIONS.filter(l => l.toLowerCase().includes(val.toLowerCase())).slice(0, 8));
+      setShowDropdown(true);
+    } else {
+      setShowDropdown(false);
+    }
+  }
+
+  function handleSelect(location) {
+    setQuery(location);
+    onChange(location);
+    setShowDropdown(false);
+  }
+
+  return (
+    <div ref={ref} style={{ position: "relative", marginBottom: 10 }}>
+      <label style={{ fontSize: 12, color: "#86868B", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>
+        Delivery Address
+      </label>
+      <div style={{ position: "relative" }}>
+        <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 16 }}>📍</span>
+        <input
+          value={query}
+          onChange={handleChange}
+          onFocus={() => {
+            if (query.length >= 2) setShowDropdown(true);
+          }}
+          placeholder="Search area, community, city…"
+          style={{ ...inputStyle, paddingLeft: 36 }}
+        />
+      </div>
+      {showDropdown && filtered.length > 0 && (
+        <div style={{
+          position: "absolute", top: "100%", left: 0, right: 0, zIndex: 999,
+          background: "#fff", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.14)",
+          border: "1px solid rgba(0,0,0,0.08)", marginTop: 4, overflow: "hidden",
+        }}>
+          {filtered.map(loc => (
+            <div
+              key={loc}
+              onClick={() => handleSelect(loc)}
+              style={{
+                padding: "11px 16px", cursor: "pointer", fontSize: 13, fontWeight: 500,
+                borderBottom: "1px solid rgba(0,0,0,0.05)",
+                transition: "background 100ms",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(0,113,227,0.06)"}
+              onMouseLeave={e => e.currentTarget.style.background = "#fff"}
+            >
+              📍 {loc}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Component ─────────────────────────────────────────
 function formatTime(dt) {
   if (!dt) return null;
   try {
@@ -32,7 +295,6 @@ export default function ManualOrders() {
   const [menuLoading, setMenuLoading] = useState(true);
   const [vatPct, setVatPct] = useState(5);
 
-  // New order form
   const [orderType, setOrderType] = useState("pickup");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -42,7 +304,6 @@ export default function ManualOrders() {
   const [sending, setSending] = useState(false);
   const [noteModal, setNoteModal] = useState(null);
 
-  // Active orders
   const [activeOrders, setActiveOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [addingItems, setAddingItems] = useState(false);
@@ -76,7 +337,6 @@ export default function ManualOrders() {
     } catch { }
   }
 
-  // ── New order item management ──
   function addItem(item) {
     setOrderItems(prev => {
       const existing = prev.find(i => i._id === item._id);
@@ -98,23 +358,34 @@ export default function ManualOrders() {
     return orderItems.find(i => i._id === itemId)?.qty || 0;
   }
 
-  // ── Confirm new order ──
+  // ✅ FIX: Correct order type mapping + proper scheduled time + delivery address
   async function handleConfirmOrder() {
     if (!orderItems.length) return;
     setSending(true);
     try {
+      // Map frontend orderType to backend orderType
+      const backendOrderType = orderType === "delivery" ? "delivery" : "pickup";
+
       const payload = {
         customerName: customerName || "Walk-in",
         customerPhone: customerPhone || null,
-        orderType: orderType === "scheduled" ? "pickup" : orderType,
+        orderType: backendOrderType,
+        // ✅ Pass scheduledTime for both scheduled pickup and delivery
+        scheduledTime: (orderType === "scheduled" || orderType === "delivery") && scheduledTime
+          ? new Date(scheduledTime).toISOString()
+          : null,
+        // ✅ Only pass delivery address for delivery orders
+        deliveryAddress: orderType === "delivery" ? deliveryAddress : null,
+        // ✅ Tag as scheduled so backend knows it's not a walk-in pickup
+        isScheduled: orderType === "scheduled",
         items: orderItems.map(i => ({
           name: i.name, quantity: i.qty,
           price: i.price, extras: i.extras || [], notes: i.notes || null,
         })),
-        scheduledTime: scheduledTime || null,
-        deliveryAddress: orderType === "delivery" ? deliveryAddress : null,
       };
+
       await apiClient.post("/orders/pickup", payload);
+
       // Reset form
       setOrderItems([]);
       setCustomerName("");
@@ -130,7 +401,6 @@ export default function ManualOrders() {
     }
   }
 
-  // ── Add round to selected order ──
   async function handleAddRound() {
     if (!orderItems.length || !selectedOrder?._id) return;
     setSending(true);
@@ -153,7 +423,6 @@ export default function ManualOrders() {
     }
   }
 
-  // ── Remove item from selected order ──
   async function handleCancelItem(roundIndex, itemIndex) {
     if (!selectedOrder?._id) return;
     try {
@@ -173,13 +442,12 @@ export default function ManualOrders() {
     }
   }
 
-  // ── Update scheduled time ──
   async function handleUpdateTime() {
     if (!selectedOrder?._id || !newTime) return;
     setUpdatingId(selectedOrder._id);
     try {
       const res = await apiClient.patch(`/orders/${selectedOrder._id}/scheduled-time`, {
-        scheduledTime: newTime,
+        scheduledTime: new Date(newTime).toISOString(),
       });
       setSelectedOrder(res.data.order);
       setActiveOrders(prev => prev.map(o => o._id === res.data.order._id ? res.data.order : o));
@@ -192,7 +460,6 @@ export default function ManualOrders() {
     }
   }
 
-  // ── Update status ──
   async function handleStatus(orderId, status) {
     setUpdatingId(orderId);
     try {
@@ -211,7 +478,6 @@ export default function ManualOrders() {
     }
   }
 
-  // ── Complete order (removes from Manual Orders) ──
   async function handleComplete(orderId) {
     setUpdatingId(orderId);
     try {
@@ -225,7 +491,6 @@ export default function ManualOrders() {
     }
   }
 
-  // Bill calculations for selected order
   const allRounds = selectedOrder?.rounds || [];
   const billItems = allRounds.flatMap(r => r.items);
   const billSubtotal = billItems.reduce((s, i) => s + i.price * (i.quantity || 1), 0);
@@ -251,7 +516,7 @@ export default function ManualOrders() {
 
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
 
-        {/* ── LEFT: New Order Form ── */}
+        {/* LEFT: New Order Form */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="card" style={{ padding: 24, marginBottom: 20 }}>
             <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700 }}>New Order</h3>
@@ -261,7 +526,7 @@ export default function ManualOrders() {
               {ORDER_TYPES.map(t => (
                 <button
                   key={t.value}
-                  onClick={() => setOrderType(t.value)}
+                  onClick={() => { setOrderType(t.value); setScheduledTime(""); }}
                   style={{
                     padding: "8px 14px", borderRadius: 10, border: "1.5px solid",
                     borderColor: orderType === t.value ? "#0071E3" : "rgba(0,0,0,0.12)",
@@ -291,32 +556,21 @@ export default function ManualOrders() {
               />
             </div>
 
-            {/* Time — for scheduled pickup or delivery */}
+            {/* ✅ Luxury Time Picker */}
             {(orderType === "scheduled" || orderType === "delivery") && (
-              <div style={{ marginBottom: 10 }}>
-                <label style={labelStyle}>
-                  {orderType === "delivery" ? "Delivery Time" : "Pickup Time"}
-                </label>
-                <input
-                  type="datetime-local"
-                  value={scheduledTime}
-                  onChange={e => setScheduledTime(e.target.value)}
-                  style={{ ...inputStyle, marginTop: 4 }}
-                />
-              </div>
+              <LuxuryTimePicker
+                value={scheduledTime}
+                onChange={setScheduledTime}
+                label={orderType === "delivery" ? "Delivery Time" : "Pickup Time"}
+              />
             )}
 
-            {/* Delivery address */}
+            {/* ✅ UAE Address Autocomplete */}
             {orderType === "delivery" && (
-              <div style={{ marginBottom: 10 }}>
-                <label style={labelStyle}>Delivery Address</label>
-                <input
-                  value={deliveryAddress}
-                  onChange={e => setDeliveryAddress(e.target.value)}
-                  placeholder="Enter delivery address"
-                  style={{ ...inputStyle, marginTop: 4 }}
-                />
-              </div>
+              <UAEAddressInput
+                value={deliveryAddress}
+                onChange={setDeliveryAddress}
+              />
             )}
           </div>
 
@@ -361,7 +615,6 @@ export default function ManualOrders() {
               ))
             )}
 
-            {/* Confirm button — only show when no active order is selected */}
             {orderItems.length > 0 && !selectedOrder && (
               <div style={{ marginTop: 16, padding: "14px 16px", background: "rgba(0,113,227,0.06)", borderRadius: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>
@@ -375,7 +628,7 @@ export default function ManualOrders() {
           </div>
         </div>
 
-        {/* ── RIGHT: Active Orders ── */}
+        {/* RIGHT: Active Orders */}
         <div style={{ width: 400, flexShrink: 0 }}>
           <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700 }}>
             Active Orders {activeOrders.length > 0 && (
@@ -413,7 +666,6 @@ export default function ManualOrders() {
                   }
                 }}
               >
-                {/* Order card header */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>{order.customerName || "Walk-in"}</div>
@@ -442,14 +694,12 @@ export default function ManualOrders() {
                   </span>
                 </div>
 
-                {/* Expanded detail */}
                 {selectedOrder?._id === order._id && (
                   <div onClick={e => e.stopPropagation()}>
                     <div style={{ height: 1, background: "rgba(0,0,0,0.08)", margin: "12px 0" }} />
 
                     {!viewBill ? (
                       <>
-                        {/* Rounds */}
                         {allRounds.map((round, idx) => (
                           <div key={round._id || idx} style={{ background: "rgba(0,0,0,0.03)", borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
                             <div style={{ fontSize: 11, color: "#86868B", fontWeight: 700, marginBottom: 6, textTransform: "uppercase" }}>
@@ -473,13 +723,12 @@ export default function ManualOrders() {
                         {/* Edit time */}
                         {editTimeMode ? (
                           <div style={{ marginBottom: 10 }}>
-                            <input
-                              type="datetime-local"
+                            <LuxuryTimePicker
                               value={newTime}
-                              onChange={e => setNewTime(e.target.value)}
-                              style={{ ...inputStyle, marginBottom: 8 }}
+                              onChange={setNewTime}
+                              label="New Time"
                             />
-                            <div style={{ display: "flex", gap: 8 }}>
+                            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                               <button onClick={() => setEditTimeMode(false)} style={ghostBtn}>Cancel</button>
                               <button onClick={handleUpdateTime} disabled={updatingId === selectedOrder._id} style={{ ...primaryBtn, flex: 1 }}>
                                 Save Time
@@ -514,10 +763,6 @@ export default function ManualOrders() {
                                           <>
                                             <button style={qtyBtn} onClick={() => removeItem(item._id)}>−</button>
                                             <span style={{ fontWeight: 700, minWidth: 20, textAlign: "center" }}>{qty}</span>
-                                            <button
-                                              style={{ ...qtyBtn, fontSize: 12 }}
-                                              onClick={() => setNoteModal({ itemId: item._id, note: orderItems.find(i => i._id === item._id)?.notes || "" })}
-                                            >📝</button>
                                           </>
                                         )}
                                         <button style={qtyBtn} onClick={() => addItem(item)}>+</button>
@@ -542,17 +787,16 @@ export default function ManualOrders() {
                           </button>
                         )}
 
-                        {/* Action buttons */}
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           {["confirmed", "preparing"].includes(order.status) && (
-  <button
-    onClick={() => handleStatus(order._id, "cancelled")}
-    disabled={updatingId === order._id}
-    style={dangerBtn}
-  >
-    Cancel Order
-  </button>
-)}
+                            <button
+                              onClick={() => handleStatus(order._id, "cancelled")}
+                              disabled={updatingId === order._id}
+                              style={dangerBtn}
+                            >
+                              Cancel Order
+                            </button>
+                          )}
                           {order.status === "ready" && (
                             <button
                               onClick={() => handleComplete(order._id)}
@@ -562,16 +806,12 @@ export default function ManualOrders() {
                               ✅ Complete & Close
                             </button>
                           )}
-                          <button
-                            onClick={() => setViewBill(true)}
-                            style={{ ...ghostBtn, flex: 1 }}
-                          >
+                          <button onClick={() => setViewBill(true)} style={{ ...ghostBtn, flex: 1 }}>
                             🧾 View Bill · {selectedOrder.total?.toFixed(2)} AED
                           </button>
                         </div>
                       </>
                     ) : (
-                      /* Bill View */
                       <div>
                         <button onClick={() => setViewBill(false)} style={{ ...ghostBtn, marginBottom: 12 }}>← Back</button>
 
