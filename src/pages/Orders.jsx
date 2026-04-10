@@ -43,7 +43,11 @@ export default function Orders() {
   const [filter, setFilter] = useState("all");
   const [expanded, setExpanded] = useState(null);
   const [updating, setUpdating] = useState(null);
-  const [seenRounds, setSeenRounds] = useState({}); // ✅ tracks last seen round count per order
+  const [seenRounds, setSeenRounds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("seenRounds") || "{}");
+    } catch { return {}; }
+  }); // ✅ tracks last seen round count per order
   const { clearOrders } = useNotifications();
   const filterRef = useRef(filter);
   filterRef.current = filter;
@@ -139,7 +143,11 @@ export default function Orders() {
                     onClick={() => {
                       setExpanded(expanded === o._id ? null : o._id);
                       // ✅ Mark rounds as seen when kitchen clicks the row
-                      setSeenRounds(prev => ({ ...prev, [o._id]: o.rounds?.length || 0 }));
+                      setSeenRounds(prev => {
+                        const updated = { ...prev, [o._id]: o.rounds?.length || 0 };
+                        localStorage.setItem("seenRounds", JSON.stringify(updated));
+                        return updated;
+                      });
                     }}
                     style={{ borderBottom: i < orders.length - 1 ? "1px solid var(--stroke)" : "none", cursor: "pointer", transition: "background 150ms" }}
                     onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.02)"}
