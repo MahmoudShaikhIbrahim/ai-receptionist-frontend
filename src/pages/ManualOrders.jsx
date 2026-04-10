@@ -350,10 +350,6 @@ export default function ManualOrders() {
                             <>
                               <button style={qtyBtn} onClick={() => removeItem(item._id)}>−</button>
                               <span style={{ fontWeight: 700, minWidth: 20, textAlign: "center" }}>{qty}</span>
-                              <button
-                                style={{ ...qtyBtn, fontSize: 12 }}
-                                onClick={() => setNoteModal({ itemId: item._id, note: orderItem?.notes || "" })}
-                              >📝</button>
                             </>
                           )}
                           <button style={qtyBtn} onClick={() => addItem(item)}>+</button>
@@ -365,8 +361,8 @@ export default function ManualOrders() {
               ))
             )}
 
-            {/* Confirm button */}
-            {orderItems.length > 0 && (
+            {/* Confirm button — only show when no active order is selected */}
+            {orderItems.length > 0 && !selectedOrder && (
               <div style={{ marginTop: 16, padding: "14px 16px", background: "rgba(0,113,227,0.06)", borderRadius: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>
                   {orderItems.reduce((s, i) => s + i.qty, 0)} items · {newSubtotal.toFixed(2)} AED
@@ -518,6 +514,10 @@ export default function ManualOrders() {
                                           <>
                                             <button style={qtyBtn} onClick={() => removeItem(item._id)}>−</button>
                                             <span style={{ fontWeight: 700, minWidth: 20, textAlign: "center" }}>{qty}</span>
+                                            <button
+                                              style={{ ...qtyBtn, fontSize: 12 }}
+                                              onClick={() => setNoteModal({ itemId: item._id, note: orderItems.find(i => i._id === item._id)?.notes || "" })}
+                                            >📝</button>
                                           </>
                                         )}
                                         <button style={qtyBtn} onClick={() => addItem(item)}>+</button>
