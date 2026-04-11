@@ -1,17 +1,21 @@
 // src/layouts/DashboardLayout.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 
 export default function DashboardLayout({ children }) {
+  const location = useLocation();
+  const isDashboard = location.pathname === "/dashboard";
+
   return (
     <div className="appShell">
       <Sidebar />
-
       <div className="appMain">
-        <TopNav />
-        <main className="content">{children}</main>
+        {isDashboard && <TopNav />}
+        <main className="content" style={isDashboard ? {} : { paddingTop: 16 }}>
+          {children}
+        </main>
       </div>
     </div>
   );
@@ -31,7 +35,6 @@ function TopNav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // close dropdown when clicking outside
   useEffect(() => {
     const onDown = (e) => {
       const el = document.querySelector("[data-profile-wrap]");
@@ -45,8 +48,8 @@ function TopNav() {
   const title = useMemo(() => "Pure AI", []);
 
   function handleLogout() {
-    logout();                 // 🔴 CLEAR TOKEN
-    navigate("/login");       // 🔴 REDIRECT
+    logout();
+    navigate("/login");
   }
 
   function goProfile() {
@@ -98,32 +101,14 @@ function TopNav() {
 
           {open && (
             <div className="menu" role="menu">
-              <button
-                className="menuItem"
-                role="menuitem"
-                type="button"
-                onClick={goProfile}
-              >
+              <button className="menuItem" role="menuitem" type="button" onClick={goProfile}>
                 Profile
               </button>
-
-              <button
-                className="menuItem"
-                role="menuitem"
-                type="button"
-                onClick={goSettings}
-              >
+              <button className="menuItem" role="menuitem" type="button" onClick={goSettings}>
                 Settings
               </button>
-
               <div className="menuSep" />
-
-              <button
-                className="menuItem menuItem--danger"
-                role="menuitem"
-                type="button"
-                onClick={handleLogout}
-              >
+              <button className="menuItem menuItem--danger" role="menuitem" type="button" onClick={handleLogout}>
                 Log out
               </button>
             </div>
