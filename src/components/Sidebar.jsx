@@ -5,7 +5,15 @@ import { IconLayoutGrid } from "@tabler/icons-react";
 import { useNotifications } from "../context/NotificationContext";
 
 export default function Sidebar() {
-  const { bookingCount, clearBookings } = useNotifications();
+  const { bookingCount, orderCount, clearBookings, clearOrders } = useNotifications();
+
+  // Combined badge: new bookings + new orders, both shown on Bookings & Orders
+  const combinedCount = bookingCount + orderCount;
+
+  function handleBookingsClick() {
+    clearBookings();
+    clearOrders();
+  }
 
   return (
     <aside className="sidebar" style={{ width: 196, minWidth: 196, padding: "14px 10px" }}>
@@ -26,8 +34,14 @@ export default function Sidebar() {
         <div className="nav__section">
           <div className="nav__title" style={{ fontSize: 10, margin: "6px 8px 4px" }}>Operations</div>
           <NavItem to="/dashboard/floor" label="Live Floor"        icon={<IconLayout />} end />
-          <NavItem to="/bookings"        label="Bookings & Orders" icon={<IconCalendar />} badge={bookingCount} onActivate={clearBookings} />
-          <NavItem to="/orders/manual"   label="Manual Orders"     icon={<IconBag />} />
+          <NavItem
+            to="/bookings"
+            label="Bookings & Orders"
+            icon={<IconCalendar />}
+            badge={combinedCount}
+            onActivate={handleBookingsClick}
+          />
+          <NavItem to="/orders/manual" label="Manual Orders" icon={<IconBag />} />
         </div>
 
         <div className="nav__section">
@@ -52,13 +66,23 @@ export default function Sidebar() {
 
 function NavItem({ to, label, icon, end = false, badge = 0, onActivate }) {
   return (
-    <NavLink to={to} end={end} onClick={onActivate}
+    <NavLink
+      to={to}
+      end={end}
+      onClick={onActivate}
       className={({ isActive }) => `navItem ${isActive ? "navItem--active" : ""}`}
-      style={{ padding: "8px 8px", margin: "0 2px", borderRadius: 10, gap: 8 }}>
+      style={{ padding: "8px 8px", margin: "0 2px", borderRadius: 10, gap: 8 }}
+    >
       <span className="navItem__icon" aria-hidden="true" style={{ flexShrink: 0 }}>{icon}</span>
       <span className="navItem__label" style={{ fontSize: 12, fontWeight: 600 }}>{label}</span>
       {badge > 0 && (
-        <span style={{ marginLeft: "auto", minWidth: 18, height: 18, borderRadius: 999, background: "#FF3B30", color: "#fff", fontSize: 10, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", flexShrink: 0 }}>
+        <span style={{
+          marginLeft: "auto", minWidth: 18, height: 18,
+          borderRadius: 999, background: "#FF3B30", color: "#fff",
+          fontSize: 10, fontWeight: 700,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "0 4px", flexShrink: 0,
+        }}>
           {badge > 99 ? "99+" : badge}
         </span>
       )}
