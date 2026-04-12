@@ -14,16 +14,17 @@ function fmtTime(dt) {
     });
   } catch { return "—"; }
 }
-function fmtAED(n) { return `${Number(n || 0).toFixed(2)} AED`; }
-function orderTotal(o) {
-  return (o.rounds || []).reduce(
-    (s, r) => s + (r.items || []).reduce((ss, i) => ss + (i.price || 0) * (i.quantity || 1), 0), 0
-  );
-}
-function totalItems(o) {
-  return (o.rounds || []).reduce(
-    (s, r) => s + (r.items || []).reduce((ss, i) => ss + (i.quantity || 1), 0), 0
-  );
+
+// get all item names from an order (across all rounds)
+function getItemNames(order) {
+  const items = (order.rounds || []).flatMap(r => r.items || []);
+  if (!items.length) return "No items";
+  // group duplicates: "Shawarma × 2, Juice"
+  const counts = {};
+  items.forEach(i => { counts[i.name] = (counts[i.name] || 0) + (i.quantity || 1); });
+  return Object.entries(counts)
+    .map(([name, qty]) => qty > 1 ? `${name} ×${qty}` : name)
+    .join(", ");
 }
 
 // ─── status pill ──────────────────────────────────────────────────────────────
@@ -41,11 +42,10 @@ function Pill({ status }) {
   const s = SM[status] || { bg: "rgba(0,0,0,0.05)", color: "#86868B" };
   return (
     <span style={{
-      padding: "2px 7px", borderRadius: 999,
+      padding: "2px 8px", borderRadius: 999,
       fontSize: 10, fontWeight: 700,
       background: s.bg, color: s.color,
-      whiteSpace: "nowrap", textTransform: "capitalize",
-      flexShrink: 0,
+      whiteSpace: "nowrap", textTransform: "capitalize", flexShrink: 0,
     }}>
       {status?.replace("_", "-") || "—"}
     </span>
@@ -56,7 +56,7 @@ function Pill({ status }) {
 function Btn({ label, color, onClick, disabled }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{
-      padding: "3px 8px", borderRadius: 6,
+      padding: "3px 9px", borderRadius: 6,
       border: `1px solid ${color}44`, background: `${color}14`,
       color, fontSize: 10, fontWeight: 700, cursor: "pointer",
       opacity: disabled ? 0.45 : 1, whiteSpace: "nowrap",
@@ -64,73 +64,27 @@ function Btn({ label, color, onClick, disabled }) {
   );
 }
 
-// ─── order card — no name, just data ─────────────────────────────────────────
+// ─── order card — items + status only ─────────────────────────────────────────
 function OrderCard({ order, onStatus, onComplete, updating }) {
-  const [expanded, setExpanded] = useState(false);
   const busy = updating === order._id;
-
-  // For dine-in show table label as a small identifier
-  const tableHint = order.tableLabel ? order.tableLabel : null;
+  const names = getItemNames(order);
+  const tableHint = order.tableLabel || null;
 
   return (
     <div style={cardStyle}>
-      {/* top row: key info + pill */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, marginBottom: 2 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-          {tableHint && (
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#0071E3", background: "rgba(0,113,227,0.08)", padding: "1px 6px", borderRadius: 5, whiteSpace: "nowrap", flexShrink: 0 }}>
-              {tableHint}
-            </span>
-          )}
-          <span style={{ fontSize: 11, color: "#1D1D1F", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {totalItems(order)} items · {fmtAED(orderTotal(order))}
+      {/* item names */}
+      <div style={{ fontSize: 12, fontWeight: 600, color: "#1D1D1F", lineHeight: 1.4, marginBottom: 5 }}>
+        {tableHint && (
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#0071E3", background: "rgba(0,113,227,0.08)", padding: "1px 5px", borderRadius: 4, marginRight: 5 }}>
+            {tableHint}
           </span>
-        </div>
+        )}
+        {names}
+      </div>
+
+      {/* status + action on same row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
         <Pill status={order.status} />
-      </div>
-
-      {/* secondary meta */}
-      <div style={{ fontSize: 10, color: "#86868B", lineHeight: 1.6 }}>
-        {(order.rounds?.length || 0) > 1 && (
-          <span style={{ marginRight: 5, padding: "0px 4px", borderRadius: 4, background: "rgba(255,149,0,0.12)", color: "#92400E", fontSize: 9, fontWeight: 700 }}>
-            {order.rounds.length} rounds
-          </span>
-        )}
-        {order.scheduledTime && <span>⏰ {fmtTime(order.scheduledTime)}</span>}
-        {order.customerPhone && <div>📞 {order.customerPhone}</div>}
-        {order.deliveryAddress && (
-          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📍 {order.deliveryAddress}</div>
-        )}
-        {order.customerName && order.customerName !== "Walk-in" && (
-          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>👤 {order.customerName}</div>
-        )}
-      </div>
-
-      {/* items toggle */}
-      <button onClick={() => setExpanded(v => !v)} style={{ background: "none", border: "none", color: "#0071E3", fontSize: 10, fontWeight: 600, cursor: "pointer", padding: "2px 0", textAlign: "left" }}>
-        {expanded ? "▾ Hide" : "▸ Items"}
-      </button>
-
-      {expanded && (
-        <div style={{ marginTop: 3, background: "rgba(0,0,0,0.03)", borderRadius: 6, padding: "5px 7px" }}>
-          {(order.rounds || []).map((round, ri) => (
-            <div key={ri} style={{ marginBottom: ri < order.rounds.length - 1 ? 4 : 0 }}>
-              {order.rounds.length > 1 && (
-                <div style={{ fontSize: 9, fontWeight: 700, color: "#86868B", textTransform: "uppercase", marginBottom: 2 }}>Round {ri + 1}</div>
-              )}
-              {(round.items || []).map((item, ii) => (
-                <div key={ii} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 1 }}>
-                  <span>{item.name} × {item.quantity}</span>
-                  <span style={{ fontWeight: 600, marginLeft: 4, flexShrink: 0 }}>{fmtAED(item.price * item.quantity)}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* actions */}
-      <div style={{ display: "flex", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
         {order.status === "confirmed" && <Btn label="Preparing" color="#FF9500" onClick={() => onStatus(order._id, "preparing")} disabled={busy} />}
         {order.status === "preparing" && <Btn label="Ready"     color="#0071E3" onClick={() => onStatus(order._id, "ready")}     disabled={busy} />}
         {order.status === "ready"     && <Btn label="✅ Done"   color="#34C759" onClick={() => onComplete(order._id)}            disabled={busy} />}
@@ -139,33 +93,21 @@ function OrderCard({ order, onStatus, onComplete, updating }) {
   );
 }
 
-// ─── booking card — no redundant label ────────────────────────────────────────
+// ─── booking card — name + time + status only ─────────────────────────────────
 function BookingCard({ booking, onStatus, updating }) {
   const busy = updating === booking._id;
-  const tableLabel = booking.tables?.[0]?.tableId?.label || null;
-  const capacity   = booking.tables?.[0]?.tableId?.capacity || null;
 
   return (
     <div style={cardStyle}>
-      {/* top row: guest name + pill */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, marginBottom: 2 }}>
-        <span style={{ fontWeight: 700, fontSize: 12, color: "#1D1D1F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "58%" }}>
-          {booking.customerName || "Guest"}
+      <div style={{ fontSize: 12, fontWeight: 600, color: "#1D1D1F", lineHeight: 1.4, marginBottom: 5 }}>
+        {booking.customerName || "Guest"}
+        <span style={{ fontWeight: 400, color: "#86868B", fontSize: 11, marginLeft: 6 }}>
+          👥{booking.partySize} · {fmtTime(booking.startIso)}
         </span>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
         <Pill status={booking.status} />
-      </div>
-
-      <div style={{ fontSize: 10, color: "#86868B", lineHeight: 1.6 }}>
-        👥 {booking.partySize} · ⏰ {fmtTime(booking.startIso)}
-        {tableLabel && <div>🪑 {tableLabel}{capacity ? ` (${capacity})` : ""}</div>}
-        {booking.customerPhone && <div>📞 {booking.customerPhone}</div>}
-        {booking.notes && <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📝 {booking.notes}</div>}
-        <span style={{ padding: "1px 5px", borderRadius: 999, fontSize: 9, fontWeight: 700, background: booking.source === "ai" ? "rgba(0,113,227,0.08)" : "rgba(52,199,89,0.10)", color: booking.source === "ai" ? "#0071E3" : "#166634" }}>
-          {booking.source === "ai" ? "🤖 AI" : "📋 Manual"}
-        </span>
-      </div>
-
-      <div style={{ display: "flex", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
         {booking.status === "confirmed" && <Btn label="Seat"     color="#0071E3" onClick={() => onStatus(booking._id, "seated")}    disabled={busy} />}
         {["confirmed","seated"].includes(booking.status) && (
           <>
@@ -185,12 +127,10 @@ const BOX_BODY_HEIGHT = 360;
 function Box({ icon, title, count, accentColor, children, style }) {
   return (
     <div style={{
-      display: "flex",
-      flexDirection: "column",
+      display: "flex", flexDirection: "column",
       background: "#fff",
       border: "1px solid rgba(0,0,0,0.08)",
-      borderRadius: 14,
-      overflow: "hidden",
+      borderRadius: 14, overflow: "hidden",
       height: BOX_BODY_HEIGHT + 34,
       ...style,
     }}>
@@ -206,7 +146,6 @@ function Box({ icon, title, count, accentColor, children, style }) {
           {count}
         </span>
       </div>
-
       <div style={{
         height: BOX_BODY_HEIGHT,
         overflowY: "auto", overflowX: "hidden",
@@ -293,7 +232,6 @@ export default function BookingsOrders() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 0 24px" }}>
-
       {lastUpdated && (
         <div style={{ fontSize: 11, color: "#C7C7CC", paddingTop: 2 }}>
           Live · {lastUpdated.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
@@ -335,10 +273,11 @@ export default function BookingsOrders() {
   );
 }
 
+// ─── card style ───────────────────────────────────────────────────────────────
 const cardStyle = {
   background: "#fff",
   border: "1px solid rgba(0,0,0,0.07)",
   borderRadius: 9,
-  padding: "7px 9px",
+  padding: "8px 10px",
   flexShrink: 0,
 };
