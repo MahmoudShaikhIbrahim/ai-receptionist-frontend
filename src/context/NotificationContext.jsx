@@ -7,9 +7,18 @@ import apiClient from "../api/client";
 const NotificationContext = createContext({});
 export function useNotifications() { return useContext(NotificationContext); }
 
+// ─── safe array helper — never crashes ────────────────────────────────────────
+function safeArray(val) {
+  if (Array.isArray(val)) return val;
+  return [];
+}
+
 // ─── 15-min alert modal ────────────────────────────────────────────────────────
 function BookingAlert({ booking, onSeatNow, onDismiss, onEdit, loading }) {
-  const fmtTime = iso => { try { return new Date(iso).toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Dubai" }); } catch { return "—"; } };
+  const fmtTime = iso => {
+    try { return new Date(iso).toLocaleString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Dubai" }); }
+    catch { return "—"; }
+  };
   const tableLabel = booking.tables?.[0]?.tableId?.label || null;
   const capacity   = booking.tables?.[0]?.tableId?.capacity || null;
 
@@ -63,7 +72,12 @@ function AlertEditModal({ booking, onSave, onCancel, loading }) {
       <div style={modalStyle}>
         <h2 style={alertTitleStyle}>Edit Booking</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20, textAlign: "left" }}>
-          {[["Guest Name", name, setName, "text"], ["Guests", guests, v => setGuests(Number(v)), "number"], ["Phone", phone, setPhone, "tel"], ["Notes", notes, setNotes, "text"]].map(([lbl, val, setter, type]) => (
+          {[
+            ["Guest Name", name,   setName,                   "text"  ],
+            ["Guests",     guests, v => setGuests(Number(v)), "number"],
+            ["Phone",      phone,  setPhone,                  "tel"   ],
+            ["Notes",      notes,  setNotes,                  "text"  ],
+          ].map(([lbl, val, setter, type]) => (
             <div key={lbl}>
               <label style={{ fontSize: 11, fontWeight: 600, color: "#86868B", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 4 }}>{lbl}</label>
               <input type={type} value={val} onChange={e => setter(e.target.value)}
@@ -108,6 +122,7 @@ export function NotificationProvider({ children }) {
   function clearOrders()   { setOrderCount(0);   }
 
   function check15Min(bookings) {
+    if (!Array.isArray(bookings)) return;
     if (activeAlertRef.current || editingBookingRef.current) return;
     const now    = Date.now();
     const TARGET = 15 * 60 * 1000;
@@ -135,18 +150,30 @@ export function NotificationProvider({ children }) {
           getOrders({ limit: 50 }),
         ]);
 
-        const bookings      = bookingData.bookings || bookingData.data || [];
-        const orders        = orderData.orders     || orderData.data  || [];
-        const aiBookings    = bookings.filter(b => b.source !== "manual");
-        const kitchenOrders = orders.filter(o => ["confirmed","preparing","ready"].includes(o.status));
+        // ── safe extraction — never assume shape ──────────────────────────────
+        const bookings = safeArray(
+          bookingData?.bookings ?? bookingData?.data ?? bookingData
+        );
+        const orders = safeArray(
+          orderData?.orders ?? orderData?.data ?? orderData
+        );
 
-        const newBookingIds = new Set(aiBookings.map(b => b._id));
-        const newOrderIds   = new Set(kitchenOrders.map(o => o._id));
+        // Only AI bookings for booking badge
+        const aiBookings    = bookings.filter(b => b?.source !== "manual");
+        // All active orders for order badge
+        const kitchenOrders = orders.filter(o =>
+          o && ["confirmed","preparing","ready"].includes(o.status)
+        );
+
+        const newBookingIds = new Set(aiBookings.map(b => String(b._id)));
+        const newOrderIds   = new Set(kitchenOrders.map(o => String(o._id)));
 
         if (!initialized.current) {
           lastBookingIds.current = newBookingIds;
           lastOrderIds.current   = newOrderIds;
-          for (const o of kitchenOrders) lastOrderRoundCounts.current.set(String(o._id), o.rounds?.length || 0);
+          for (const o of kitchenOrders) {
+            lastOrderRoundCounts.current.set(String(o._id), o.rounds?.length || 0);
+          }
           initialized.current = true;
           check15Min(bookings);
           return;
@@ -154,7 +181,9 @@ export function NotificationProvider({ children }) {
 
         // booking badge
         let nb = 0;
-        for (const id of newBookingIds) if (!lastBookingIds.current.has(id)) nb++;
+        for (const id of newBookingIds) {
+          if (!lastBookingIds.current.has(id)) nb++;
+        }
         if (nb > 0) setBookingCount(p => p + nb);
         lastBookingIds.current = newBookingIds;
 
@@ -163,16 +192,26 @@ export function NotificationProvider({ children }) {
         for (const o of kitchenOrders) {
           const id  = String(o._id);
           const cur = o.rounds?.length || 0;
-          if (!lastOrderIds.current.has(id)) { no++; }
-          else { const prev = lastOrderRoundCounts.current.get(id) || 0; if (cur > prev) no++; }
+          if (!lastOrderIds.current.has(id)) {
+            no++;
+          } else {
+            const prev = lastOrderRoundCounts.current.get(id) || 0;
+            if (cur > prev) no++;
+          }
           lastOrderRoundCounts.current.set(id, cur);
         }
-        for (const id of lastOrderRoundCounts.current.keys()) if (!newOrderIds.has(id)) lastOrderRoundCounts.current.delete(id);
+        for (const id of lastOrderRoundCounts.current.keys()) {
+          if (!newOrderIds.has(id)) lastOrderRoundCounts.current.delete(id);
+        }
         if (no > 0) setOrderCount(p => p + no);
         lastOrderIds.current = newOrderIds;
 
         check15Min(bookings);
-      } catch { /* silent */ }
+
+      } catch (err) {
+        // Never let the poll crash the app
+        console.warn("Notification poll error (silent):", err?.message);
+      }
     }
 
     poll();
@@ -199,8 +238,10 @@ export function NotificationProvider({ children }) {
     setAlertLoading(true);
     try {
       await apiClient.patch(`/bookings/${updated._id}/status`, {
-        customerName: updated.customerName, partySize: updated.partySize,
-        customerPhone: updated.customerPhone, notes: updated.notes,
+        customerName: updated.customerName,
+        partySize:    updated.partySize,
+        customerPhone: updated.customerPhone,
+        notes:        updated.notes,
       });
       const tableId = updated.tables?.[0]?.tableId?._id || updated.tables?.[0]?.tableId;
       if (tableId) {
@@ -215,19 +256,30 @@ export function NotificationProvider({ children }) {
     <NotificationContext.Provider value={{ bookingCount, orderCount, clearBookings, clearOrders }}>
       {children}
       {activeAlert && !editingBooking && (
-        <BookingAlert booking={activeAlert} onSeatNow={handleSeatNow} onDismiss={handleDismiss} onEdit={handleEditFromAlert} loading={alertLoading} />
+        <BookingAlert
+          booking={activeAlert}
+          onSeatNow={handleSeatNow}
+          onDismiss={handleDismiss}
+          onEdit={handleEditFromAlert}
+          loading={alertLoading}
+        />
       )}
       {editingBooking && (
-        <AlertEditModal booking={editingBooking} onSave={handleSaveAndSeat} onCancel={() => setEditingBooking(null)} loading={alertLoading} />
+        <AlertEditModal
+          booking={editingBooking}
+          onSave={handleSaveAndSeat}
+          onCancel={() => setEditingBooking(null)}
+          loading={alertLoading}
+        />
       )}
     </NotificationContext.Provider>
   );
 }
 
 // ─── styles ────────────────────────────────────────────────────────────────────
-const overlayStyle   = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 };
-const modalStyle     = { background: "#fff", borderRadius: 22, padding: "32px 28px 26px", width: 360, maxWidth: "92vw", boxShadow: "0 24px 72px rgba(0,0,0,0.22)", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif" };
-const iconRingStyle  = { fontSize: 36, width: 68, height: 68, background: "rgba(0,113,227,0.08)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" };
+const overlayStyle    = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 };
+const modalStyle      = { background: "#fff", borderRadius: 22, padding: "32px 28px 26px", width: 360, maxWidth: "92vw", boxShadow: "0 24px 72px rgba(0,0,0,0.22)", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif" };
+const iconRingStyle   = { fontSize: 36, width: 68, height: 68, background: "rgba(0,113,227,0.08)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" };
 const alertTitleStyle = { fontSize: 19, fontWeight: 700, color: "#1D1D1F", margin: "0 0 18px", letterSpacing: "-0.02em", textAlign: "center" };
 const detailsBoxStyle = { background: "#F5F5F7", borderRadius: 14, padding: "14px 16px", marginBottom: 22, display: "flex", flexDirection: "column", gap: 10 };
 const alertBtn        = { width: "100%", padding: 13, borderRadius: 13, fontSize: 15, fontWeight: 600, cursor: "pointer", border: "none", fontFamily: "inherit" };
