@@ -503,9 +503,12 @@ export default function ManualOrders() {
       setMenuLoading(true);
       try {
         const [agentData, bizData, tablesRes] = await Promise.all([getAgentMe(), getBusinessMe(), apiClient.get("/tables")]);
-        setMenu(agentData.agent?.menu?.filter(m => m.available) || []);
-        setVatPct(bizData.business?.vatPercentage ?? 5);
-        setTables(tablesRes.data || []);
+        // agentData shape: { agent: { menu: [...] } } OR { menu: [...] } — handle both
+        const rawMenu = agentData?.agent?.menu ?? agentData?.menu ?? [];
+        setMenu(Array.isArray(rawMenu) ? rawMenu.filter(m => m.available) : []);
+        setVatPct(bizData?.business?.vatPercentage ?? bizData?.vatPercentage ?? 5);
+        const rawTables = tablesRes?.data;
+        setTables(Array.isArray(rawTables) ? rawTables : rawTables?.tables ?? rawTables?.data ?? []);
       } catch (e) { console.error(e); }
       finally { setMenuLoading(false); }
     }
@@ -516,8 +519,13 @@ export default function ManualOrders() {
   }, []);
 
   async function fetchActive() {
-    try { const res = await apiClient.get("/orders/manual/active"); setActiveOrders(res.data.orders || []); }
-    catch {}
+    try {
+      const res = await apiClient.get("/orders/manual/active");
+      const raw = res?.data?.orders ?? res?.data ?? [];
+      setActiveOrders(Array.isArray(raw) ? raw : []);
+    } catch (e) {
+      console.warn("fetchActive error:", e?.message);
+    }
   }
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 2800); }
