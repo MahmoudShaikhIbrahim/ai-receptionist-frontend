@@ -64,7 +64,6 @@ function OrderCard({ order, onStatus, onComplete, updating }) {
         <Pill status={order.status} />
         {order.status === "confirmed" && <Btn label="Preparing" color="#FF9500" onClick={() => onStatus(order._id, "preparing")} disabled={busy} />}
         {order.status === "preparing" && <Btn label="Ready"     color="#0071E3" onClick={() => onStatus(order._id, "ready")}     disabled={busy} />}
-        {order.status === "ready"     && <Btn label="✅ Done"   color="#34C759" onClick={() => onComplete(order._id)}            disabled={busy} />}
       </div>
     </div>
   );
