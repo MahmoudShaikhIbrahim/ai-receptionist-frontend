@@ -126,13 +126,15 @@ export function NotificationProvider({ children }) {
     if (activeAlertRef.current || editingBookingRef.current) return;
     const now    = Date.now();
     const TARGET = 15 * 60 * 1000;
-    const WINDOW =  2 * 60 * 1000;
+    const WINDOW =  3 * 60 * 1000; // ±3 min window (13–18 min before booking)
     for (const b of bookings) {
       if (["seated","cancelled","completed","no_show"].includes(b.status)) continue;
       if (alertedIds.current.has(String(b._id))) continue;
       if (!b.startIso) continue;
       const diff = new Date(b.startIso).getTime() - now;
+      console.log(`[15min check] Booking ${b._id} (${b.customerName}): ${Math.round(diff/60000)} min away`);
       if (diff >= TARGET - WINDOW && diff <= TARGET + WINDOW) {
+        console.log(`[15min alert] Triggering for ${b.customerName}`);
         alertedIds.current.add(String(b._id));
         setActiveAlert(b);
         break;
@@ -175,6 +177,7 @@ export function NotificationProvider({ children }) {
             lastOrderRoundCounts.current.set(String(o._id), o.rounds?.length || 0);
           }
           initialized.current = true;
+          // Still check 15-min alert on first load in case staff opens the app late
           check15Min(bookings);
           return;
         }

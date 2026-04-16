@@ -420,25 +420,86 @@ function OrderModal({ cartItems, vatPct, tables, onConfirm, onClose }) {
 }
 
 // ─── Booking Modal ─────────────────────────────────────────────────────────────
-function BookingModal({ onConfirm, onClose, loading }) {
-  const [name, setName] = useState(""); const [guests, setGuests] = useState(2);
-  const [phone, setPhone] = useState(""); const [notes, setNotes] = useState("");
+function BookingModal({ onConfirm, onClose, loading, tables = [], bookingError }) {
+  const [name,      setName]      = useState("");
+  const [guests,    setGuests]    = useState(2);
+  const [phone,     setPhone]     = useState("");
+  const [notes,     setNotes]     = useState("");
   const [startTime, setStartTime] = useState("");
+
   const valid = name.trim() && guests > 0 && startTime;
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }} onClick={onClose}>
       <div style={{ background: "#fff", borderRadius: 20, padding: 26, width: 420, maxWidth: "92vw", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
         <h3 style={{ margin: "0 0 18px", fontSize: 17, fontWeight: 700 }}>📅 New Booking</h3>
+
+        {/* availability error */}
+        {bookingError && (
+          <div style={{ background: "rgba(255,59,48,0.08)", border: "1px solid rgba(255,59,48,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#B42318", fontWeight: 500 }}>
+            ⚠️ {bookingError}
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-          <div style={{ flex: 1 }}><label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 4 }}>Guest Name *</label><input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Sara" style={inputStyle} /></div>
-          <div style={{ width: 80 }}><label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 4 }}>Guests</label><input type="number" min={1} max={20} value={guests} onChange={e => setGuests(Number(e.target.value))} style={inputStyle} /></div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 4 }}>Guest Name *</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Sara" style={inputStyle} />
+          </div>
+          <div style={{ width: 80 }}>
+            <label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 4 }}>Guests</label>
+            <input type="number" min={1} max={20} value={guests} onChange={e => setGuests(Number(e.target.value))} style={inputStyle} />
+          </div>
         </div>
-        <div style={{ marginBottom: 12 }}><label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 4 }}>Phone</label><input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+971…" type="tel" style={inputStyle} /></div>
-        <div style={{ marginBottom: 12 }}><label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 4 }}>Notes</label><input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Special requests…" style={inputStyle} /></div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 4 }}>Phone</label>
+          <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+971…" type="tel" style={inputStyle} />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 4 }}>Notes</label>
+          <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Special requests…" style={inputStyle} />
+        </div>
+
         <TimePicker value={startTime} onChange={setStartTime} label="Booking Time *" />
+
+        {/* table availability info */}
+        {tables.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 6 }}>
+              Tables — {tables.filter(t => t.status === "available").length} of {tables.length} available
+            </label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {tables.map(t => {
+                const avail = t.status === "available";
+                return (
+                  <div key={t._id} style={{
+                    padding: "4px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600,
+                    background: avail ? "rgba(52,199,89,0.10)" : "rgba(255,59,48,0.08)",
+                    color: avail ? "#166534" : "#B42318",
+                    border: `1px solid ${avail ? "rgba(52,199,89,0.2)" : "rgba(255,59,48,0.15)"}`,
+                  }}>
+                    {t.name || t.label || `T${t.tableNumber}`} {avail ? "✓" : "✗"}
+                  </div>
+                );
+              })}
+            </div>
+            {tables.filter(t => t.status === "available").length === 0 && (
+              <div style={{ marginTop: 8, fontSize: 12, color: "#B42318", fontWeight: 600 }}>
+                ⚠️ All tables are currently occupied. The system will still book for a future time slot.
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
           <button onClick={onClose} style={ghostBtn}>Cancel</button>
-          <button disabled={!valid || loading} onClick={() => onConfirm({ customerName: name, partySize: guests, customerPhone: phone, notes, startTime })} style={{ ...primaryBtn, flex: 1, opacity: (!valid || loading) ? 0.5 : 1 }}>
+          <button
+            disabled={!valid || loading}
+            onClick={() => onConfirm({ customerName: name, partySize: guests, customerPhone: phone, notes, startTime })}
+            style={{ ...primaryBtn, flex: 1, opacity: (!valid || loading) ? 0.5 : 1 }}
+          >
             {loading ? "Creating…" : "Create Booking"}
           </button>
         </div>
@@ -504,6 +565,7 @@ export default function ManualOrders() {
   const [showOrder,      setShowOrder]      = useState(false);
   const [showBooking,    setShowBooking]    = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError,   setBookingError]   = useState(null);
   const [toast,          setToast]          = useState(null);
   const [activeOrders,   setActiveOrders]   = useState([]);
   const [showPanel,      setShowPanel]      = useState(false);
@@ -566,11 +628,24 @@ export default function ManualOrders() {
 
   async function handleBookingConfirm({ customerName, partySize, customerPhone, notes, startTime }) {
     setBookingLoading(true);
+    setBookingError(null);
     try {
-      await apiClient.post("/bookings/manual", { customerName, partySize, customerPhone: customerPhone || null, notes: notes || null, startTime: new Date(startTime).toISOString() });
-      setShowBooking(false); showToast("✅ Booking created");
-    } catch { showToast("❌ Failed to create booking"); }
-    finally { setBookingLoading(false); }
+      await apiClient.post("/bookings/manual", {
+        customerName, partySize,
+        customerPhone: customerPhone || null,
+        notes: notes || null,
+        startTime: new Date(startTime).toISOString(),
+      });
+      setShowBooking(false);
+      setBookingError(null);
+      showToast("✅ Booking created");
+    } catch (e) {
+      // Show the backend error message inside the modal instead of closing it
+      const msg = e?.response?.data?.error || e?.message || "Failed to create booking";
+      setBookingError(msg);
+    } finally {
+      setBookingLoading(false);
+    }
   }
 
   async function handleOrderConfirmed() {
@@ -666,7 +741,13 @@ export default function ManualOrders() {
         />
       )}
       {showBooking && (
-        <BookingModal onConfirm={handleBookingConfirm} onClose={() => setShowBooking(false)} loading={bookingLoading} />
+        <BookingModal
+          onConfirm={handleBookingConfirm}
+          onClose={() => { setShowBooking(false); setBookingError(null); }}
+          loading={bookingLoading}
+          tables={tables}
+          bookingError={bookingError}
+        />
       )}
 
       {/* Toast */}
