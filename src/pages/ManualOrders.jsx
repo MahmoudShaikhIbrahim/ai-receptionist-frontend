@@ -207,7 +207,14 @@ function ActiveOrdersPanel({ orders, vatPct, onBack, onOrderDone }) {
 
   const statusColor = { confirmed: "#34C759", preparing: "#FF9500", ready: "#0071E3" };
   const typeIcon    = { pickup: "🛍️", delivery: "🚗", dineIn: "🍽️" };
-  const typeLabel   = { pickup: "Walk-in", delivery: "Delivery", dineIn: "Dine-in" };
+  const typeLabel   = { delivery: "Delivery", dineIn: "Dine-in" };
+
+  function getOrderTypeLabel(order) {
+    if (order.orderType === "dineIn") return `🍽️ ${order.tableLabel || "Dine-in"}`;
+    if (order.orderType === "delivery") return "🚗 Delivery";
+    if (order.orderType === "pickup" && order.scheduledTime) return "⏰ Pickup";
+    return "🚶 Walk-in";
+  }
 
   return (
     <div style={{ width: 196, minWidth: 196, height: "100vh", background: "rgba(250,250,250,0.96)", borderRight: "1px solid rgba(0,0,0,0.08)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
@@ -231,12 +238,8 @@ function ActiveOrdersPanel({ orders, vatPct, onBack, onOrderDone }) {
             onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(0,0,0,0.07)"}>
             {/* top row: type label + status dot */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#1D1D1F", display: "flex", alignItems: "center", gap: 4 }}>
-                {typeIcon[order.orderType] || "📦"} {typeLabel[order.orderType] || order.orderType}
-                {/* walk-in vs scheduled pickup distinction */}
-                {order.orderType === "pickup" && order.scheduledTime && (
-                  <span style={{ fontSize: 9, fontWeight: 600, color: "#0071E3", background: "rgba(0,113,227,0.08)", padding: "1px 5px", borderRadius: 4, marginLeft: 2 }}>Scheduled</span>
-                )}
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#1D1D1F" }}>
+                {getOrderTypeLabel(order)}
               </span>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: statusColor[order.status] || "#86868B", flexShrink: 0 }} />
             </div>
@@ -527,9 +530,11 @@ export default function ManualOrders() {
 
   async function fetchActive() {
     try {
-      const res = await apiClient.get("/orders/manual/active");
+      const res = await apiClient.get("/orders", { params: { limit: 100 } });
       const raw = res?.data?.orders ?? res?.data ?? [];
-      setActiveOrders(Array.isArray(raw) ? raw : []);
+      const all = Array.isArray(raw) ? raw : [];
+      // Show all active orders regardless of type or source
+      setActiveOrders(all.filter(o => ["confirmed", "preparing", "ready"].includes(o.status)));
     } catch (e) {
       console.warn("fetchActive error:", e?.message);
     }
