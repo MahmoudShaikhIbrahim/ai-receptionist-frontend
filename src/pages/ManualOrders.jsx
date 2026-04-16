@@ -333,7 +333,7 @@ function OrderModal({ cartItems, vatPct, tables, onConfirm, onClose }) {
     } finally { setSending(false); }
   }
 
-  const availableTables = (tables || []).filter(t => t.status === "available");
+  const availableTables = (tables || []);
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }} onClick={onClose}>
@@ -391,7 +391,7 @@ function OrderModal({ cartItems, vatPct, tables, onConfirm, onClose }) {
                 <select value={tableId} onChange={e => setTableId(e.target.value)} style={inputStyle}>
                   <option value="">— select table —</option>
                   {availableTables.map(t => (
-                    <option key={t._id} value={t._id}>{t.name || t.label || `Table ${t.tableNumber}`} (seats {t.capacity})</option>
+                    <option key={t._id} value={t._id}>{t.label} (seats {t.capacity})</option>
                   ))}
                 </select>
               </div>
@@ -426,8 +426,27 @@ function BookingModal({ onConfirm, onClose, loading, tables = [], bookingError }
   const [phone,     setPhone]     = useState("");
   const [notes,     setNotes]     = useState("");
   const [startTime, setStartTime] = useState("");
+  const [liveTableStatus, setLiveTableStatus] = useState({}); // { tableId: "seated"|"booked" }
+
+  // Fetch live table status on mount
+  useEffect(() => {
+    async function fetchLive() {
+      try {
+        const res = await apiClient.get("/bookings/tables/live");
+        const data = res?.data?.data || [];
+        const map = {};
+        data.forEach(t => {
+          if (t.status !== "free") map[String(t.tableId)] = t.status;
+        });
+        setLiveTableStatus(map);
+      } catch {} // silently ignore
+    }
+    fetchLive();
+  }, []);
 
   const valid = name.trim() && guests > 0 && startTime;
+  const occupiedCount = Object.keys(liveTableStatus).length;
+  const availableCount = tables.length - occupiedCount;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }} onClick={onClose}>
@@ -464,30 +483,31 @@ function BookingModal({ onConfirm, onClose, loading, tables = [], bookingError }
 
         <TimePicker value={startTime} onChange={setStartTime} label="Booking Time *" />
 
-        {/* table availability info */}
+        {/* table availability — uses live booking data */}
         {tables.length > 0 && (
           <div style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 6 }}>
-              Tables — {tables.filter(t => t.status === "available").length} of {tables.length} available
+              Tables — {availableCount} of {tables.length} currently free
             </label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
               {tables.map(t => {
-                const avail = t.status === "available";
+                const isOccupied = !!liveTableStatus[String(t._id)];
+                const statusLabel = liveTableStatus[String(t._id)] === "seated" ? "seated" : isOccupied ? "booked" : "free";
                 return (
                   <div key={t._id} style={{
                     padding: "4px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600,
-                    background: avail ? "rgba(52,199,89,0.10)" : "rgba(255,59,48,0.08)",
-                    color: avail ? "#166534" : "#B42318",
-                    border: `1px solid ${avail ? "rgba(52,199,89,0.2)" : "rgba(255,59,48,0.15)"}`,
+                    background: isOccupied ? "rgba(255,59,48,0.08)" : "rgba(52,199,89,0.10)",
+                    color: isOccupied ? "#B42318" : "#166534",
+                    border: `1px solid ${isOccupied ? "rgba(255,59,48,0.15)" : "rgba(52,199,89,0.2)"}`,
                   }}>
-                    {t.name || t.label || `T${t.tableNumber}`} {avail ? "✓" : "✗"}
+                    {t.label || `T${t.tableNumber}`} {isOccupied ? `✗ ${statusLabel}` : "✓"}
                   </div>
                 );
               })}
             </div>
-            {tables.filter(t => t.status === "available").length === 0 && (
+            {availableCount === 0 && (
               <div style={{ marginTop: 8, fontSize: 12, color: "#B42318", fontWeight: 600 }}>
-                ⚠️ All tables are currently occupied. The system will still book for a future time slot.
+                ⚠️ All tables are currently occupied. The booking will be for a future time slot.
               </div>
             )}
           </div>
@@ -580,7 +600,14 @@ export default function ManualOrders() {
         setMenu(Array.isArray(rawMenu) ? rawMenu.filter(m => m.available) : []);
         setVatPct(bizData?.business?.vatPercentage ?? bizData?.vatPercentage ?? 5);
         const rawTables = tablesRes?.data;
-        setTables(Array.isArray(rawTables) ? rawTables : rawTables?.tables ?? rawTables?.data ?? []);
+        // GET /tables returns { tables: [...] }
+        const allTables = Array.isArray(rawTables?.tables)
+          ? rawTables.tables
+          : Array.isArray(rawTables)
+          ? rawTables
+          : [];
+        // Only active, non-maintenance tables
+        setTables(allTables.filter(t => t.isActive !== false && t.isMaintenance !== true));
       } catch (e) { console.error(e); }
       finally { setMenuLoading(false); }
     }
