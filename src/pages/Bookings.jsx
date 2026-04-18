@@ -9,10 +9,14 @@ function fmtTime(dt) {
   catch { return "—"; }
 }
 function fmtAED(n) { return `${Number(n || 0).toFixed(2)} AED`; }
-function orderTotal(o) { return (o.rounds || []).reduce((s, r) => s + (r.items || []).reduce((ss, i) => ss + (i.price || 0) * (i.quantity || 1), 0), 0); }
-function totalItems(o) { return (o.rounds || []).reduce((s, r) => s + (r.items || []).reduce((ss, i) => ss + (i.quantity || 1), 0), 0); }
+function getOrderItems(o) {
+  const fromRounds = (o.rounds || []).flatMap(r => r.items || []);
+  return fromRounds.length > 0 ? fromRounds : (o.items || []);
+}
+function orderTotal(o) { return getOrderItems(o).reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0); }
+function totalItems(o) { return getOrderItems(o).reduce((s, i) => s + (i.quantity || 1), 0); }
 function getItemNames(order) {
-  const items = (order.rounds || []).flatMap(r => r.items || []);
+  const items = getOrderItems(order);
   if (!items.length) return "No items";
   const counts = {};
   items.forEach(i => { counts[i.name] = (counts[i.name] || 0) + (i.quantity || 1); });
