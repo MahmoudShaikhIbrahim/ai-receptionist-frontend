@@ -31,7 +31,6 @@ function ScrollPicker({ items, value, onChange, width = 60 }) {
 
   return (
     <div style={{ position: "relative", width, flexShrink: 0 }}>
-      {/* highlight bar */}
       <div style={{ position: "absolute", top: "50%", left: 4, right: 4, height: itemH, transform: "translateY(-50%)", background: "rgba(0,113,227,0.10)", borderRadius: 10, pointerEvents: "none", zIndex: 1 }} />
       <div ref={ref} onScroll={handleScroll} style={{ height: itemH * 3, overflowY: "scroll", scrollSnapType: "y mandatory", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         <div style={{ height: itemH }} />
@@ -74,7 +73,6 @@ function TimePicker({ value, onChange, label }) {
   return (
     <div style={{ marginBottom: 16 }}>
       {label && <label style={{ fontSize: 12, color: "#86868B", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 10 }}>{label}</label>}
-      {/* Day pills */}
       <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, scrollbarWidth: "none" }}>
         {days.map(d => (
           <button key={d.value} onClick={() => setDate(d.value)} style={{ padding: "6px 12px", borderRadius: 20, border: "1.5px solid", borderColor: date === d.value ? "#0071E3" : "rgba(0,0,0,0.10)", background: date === d.value ? "#0071E3" : "#fff", color: date === d.value ? "#fff" : "#1D1D1F", fontWeight: 600, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -82,7 +80,6 @@ function TimePicker({ value, onChange, label }) {
           </button>
         ))}
       </div>
-      {/* Scroll wheels */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, background: "#F5F5F7", borderRadius: 14, padding: "6px 12px" }}>
         <ScrollPicker items={hours}   value={hour}   onChange={setHour}   width={60} />
         <span style={{ fontSize: 20, fontWeight: 700, color: "#1D1D1F", paddingBottom: 2, flexShrink: 0 }}>:</span>
@@ -90,7 +87,6 @@ function TimePicker({ value, onChange, label }) {
         <div style={{ width: 1, height: 44, background: "rgba(0,0,0,0.08)", margin: "0 8px", flexShrink: 0 }} />
         <ScrollPicker items={amPms}  value={ampm}   onChange={setAmpm}   width={60} />
       </div>
-      {/* Preview */}
       <div style={{ marginTop: 8, padding: "6px 12px", borderRadius: 10, background: "rgba(0,113,227,0.06)", fontSize: 12, fontWeight: 600, color: "#0071E3" }}>
         ⏰ {days.find(d => d.value === date)?.label} · {hour}:{minute} {ampm}
       </div>
@@ -98,11 +94,21 @@ function TimePicker({ value, onChange, label }) {
   );
 }
 
+// ─── helpers ──────────────────────────────────────────────────────────────────
+// AI agent orders store items in order.items directly (not in rounds)
+// Manual orders store items in order.rounds[].items
+// This function handles both cases
+function getOrderItemsAll(order) {
+  const fromRounds = (order.rounds || []).flatMap(r => r.items || []);
+  return fromRounds.length > 0 ? fromRounds : (order.items || []);
+}
+
 // ─── Bill Modal ────────────────────────────────────────────────────────────────
 function BillModal({ order, vatPct, onDone, onClose }) {
   const [completing, setCompleting] = useState(false);
 
-  const allItems = (order.rounds || []).flatMap(r => r.items || []);
+  // FIX: use getOrderItemsAll so AI agent orders show correct items + price
+  const allItems = getOrderItemsAll(order);
   const subtotal = allItems.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
   const vat      = (subtotal * vatPct) / 100;
   const total    = subtotal + vat;
@@ -128,7 +134,7 @@ function BillModal({ order, vatPct, onDone, onClose }) {
         ${order.deliveryAddress ? "<br/>📍 " + order.deliveryAddress : ""}
         <br/>${new Date().toLocaleString("en-US", { timeZone: "Asia/Dubai" })}
       </div>
-      ${allItems.map(i => `<div class="item"><span>${i.name} × ${i.quantity}</span><span>${(i.price * i.quantity).toFixed(2)} AED</span></div>`).join("")}
+      ${allItems.map(i => `<div class="item"><span>${i.name} × ${i.quantity}</span><span>${((i.price || 0) * (i.quantity || 1)).toFixed(2)} AED</span></div>`).join("")}
       <hr/>
       <div class="row"><span>Subtotal</span><span>${subtotal.toFixed(2)} AED</span></div>
       <div class="row"><span>VAT (${vatPct}%)</span><span>${vat.toFixed(2)} AED</span></div>
@@ -159,12 +165,11 @@ function BillModal({ order, vatPct, onDone, onClose }) {
           {order.customerPhone && ` · ${order.customerPhone}`}
         </p>
 
-        {/* items */}
         <div style={{ background: "#F5F5F7", borderRadius: 12, padding: "10px 12px", marginBottom: 16 }}>
           {allItems.map((i, idx) => (
             <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 3 }}>
               <span>{i.name} × {i.quantity}</span>
-              <span style={{ fontWeight: 600 }}>{(i.price * i.quantity).toFixed(2)} AED</span>
+              <span style={{ fontWeight: 600 }}>{((i.price || 0) * (i.quantity || 1)).toFixed(2)} AED</span>
             </div>
           ))}
           <div style={{ borderTop: "1px solid rgba(0,0,0,0.08)", marginTop: 8, paddingTop: 8 }}>
@@ -174,7 +179,6 @@ function BillModal({ order, vatPct, onDone, onClose }) {
           </div>
         </div>
 
-        {/* actions */}
         <button onClick={handlePrint} style={{ ...ghostBtn, width: "100%", marginBottom: 8, textAlign: "center", fontSize: 14 }}>
           🖨️ Print Bill
         </button>
@@ -189,25 +193,27 @@ function BillModal({ order, vatPct, onDone, onClose }) {
   );
 }
 
-// ─── Active Orders Panel (replaces sidebar) ────────────────────────────────────
+// ─── Active Orders Panel ───────────────────────────────────────────────────────
 function ActiveOrdersPanel({ orders, vatPct, onBack, onOrderDone }) {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   function getItemNames(order) {
-    const items = (order.rounds || []).flatMap(r => r.items || []);
+    // FIX: use getOrderItemsAll so AI agent orders show item names
+    const items = getOrderItemsAll(order);
+    if (!items.length) return "No items";
     const counts = {};
     items.forEach(i => { counts[i.name] = (counts[i.name] || 0) + (i.quantity || 1); });
     return Object.entries(counts).map(([n, q]) => q > 1 ? `${n} ×${q}` : n).join(", ");
   }
 
   function getTotal(order) {
-    const sub = (order.rounds || []).flatMap(r => r.items || []).reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
+    // FIX: use getOrderItemsAll so AI agent orders show correct price
+    const items = getOrderItemsAll(order);
+    const sub = items.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
     return sub + (sub * vatPct) / 100;
   }
 
   const statusColor = { confirmed: "#34C759", preparing: "#FF9500", ready: "#0071E3" };
-  const typeIcon    = { pickup: "🛍️", delivery: "🚗", dineIn: "🍽️" };
-  const typeLabel   = { delivery: "Delivery", dineIn: "Dine-in" };
 
   function getOrderTypeLabel(order) {
     if (order.orderType === "dineIn") return `🍽️ ${order.tableLabel || "Dine-in"}`;
@@ -218,7 +224,6 @@ function ActiveOrdersPanel({ orders, vatPct, onBack, onOrderDone }) {
 
   return (
     <div style={{ width: 196, minWidth: 196, height: "100vh", background: "rgba(250,250,250,0.96)", borderRight: "1px solid rgba(0,0,0,0.08)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-      {/* header */}
       <div style={{ padding: "14px 12px 10px", borderBottom: "1px solid rgba(0,0,0,0.06)", flexShrink: 0 }}>
         <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", color: "#0071E3", fontSize: 12, fontWeight: 700, padding: 0, marginBottom: 10, display: "flex", alignItems: "center", gap: 4 }}>
           ← Back to menu
@@ -227,7 +232,6 @@ function ActiveOrdersPanel({ orders, vatPct, onBack, onOrderDone }) {
         <div style={{ fontSize: 10, color: "#86868B", marginTop: 1 }}>{orders.length} order{orders.length !== 1 ? "s" : ""}</div>
       </div>
 
-      {/* list */}
       <div style={{ flex: 1, overflowY: "auto", padding: "6px" }}>
         {orders.length === 0 ? (
           <div style={{ textAlign: "center", color: "#C7C7CC", fontSize: 11, paddingTop: 40 }}>No active orders</div>
@@ -236,22 +240,16 @@ function ActiveOrdersPanel({ orders, vatPct, onBack, onOrderDone }) {
             style={{ background: "#fff", border: "1px solid rgba(0,0,0,0.07)", borderRadius: 10, padding: "8px 9px", marginBottom: 5, cursor: "pointer" }}
             onMouseEnter={e => e.currentTarget.style.borderColor = "#0071E3"}
             onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(0,0,0,0.07)"}>
-            {/* top row: type label + status dot */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#1D1D1F" }}>
-                {getOrderTypeLabel(order)}
-              </span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#1D1D1F" }}>{getOrderTypeLabel(order)}</span>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: statusColor[order.status] || "#86868B", flexShrink: 0 }} />
             </div>
-            {/* item names */}
             <div style={{ fontSize: 11, fontWeight: 600, color: "#1D1D1F", lineHeight: 1.35, marginBottom: 3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
               {getItemNames(order)}
             </div>
-            {/* total */}
             <div style={{ fontSize: 12, fontWeight: 700, color: "#0071E3", marginBottom: 2 }}>
               {getTotal(order).toFixed(2)} AED
             </div>
-            {/* meta */}
             <div style={{ fontSize: 10, color: "#86868B", lineHeight: 1.5 }}>
               {order.customerName && order.customerName !== "Walk-in" && <div>👤 {order.customerName}</div>}
               {order.customerPhone && <div>📞 {order.customerPhone}</div>}
@@ -264,7 +262,6 @@ function ActiveOrdersPanel({ orders, vatPct, onBack, onOrderDone }) {
         ))}
       </div>
 
-      {/* bill modal */}
       {selectedOrder && (
         <BillModal
           order={selectedOrder}
@@ -287,9 +284,7 @@ function OrderModal({ cartItems, vatPct, tables, onConfirm, onClose }) {
   const [tableId,         setTableId]         = useState("");
   const [sending,         setSending]         = useState(false);
 
-  // Guard: ensure cartItems is always an array
   const safeCart = Array.isArray(cartItems) ? cartItems : [];
-
   const subtotal = safeCart.reduce((s, i) => s + (i.price || 0) * (i.qty || 0), 0);
   const vat      = (subtotal * vatPct) / 100;
   const total    = subtotal + vat;
@@ -333,15 +328,11 @@ function OrderModal({ cartItems, vatPct, tables, onConfirm, onClose }) {
     } finally { setSending(false); }
   }
 
-  const availableTables = (tables || []);
-
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }} onClick={onClose}>
       <div style={{ background: "#fff", borderRadius: 20, padding: 26, width: 460, maxWidth: "94vw", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-
         <h3 style={{ margin: "0 0 14px", fontSize: 17, fontWeight: 700 }}>Confirm Order</h3>
 
-        {/* cart summary */}
         <div style={{ background: "rgba(0,113,227,0.04)", borderRadius: 12, padding: "10px 12px", marginBottom: 18 }}>
           {safeCart.length === 0 ? (
             <div style={{ color: "#86868B", fontSize: 13 }}>No items in cart</div>
@@ -358,7 +349,6 @@ function OrderModal({ cartItems, vatPct, tables, onConfirm, onClose }) {
           </div>
         </div>
 
-        {/* order type */}
         <label style={{ fontSize: 11, color: "#86868B", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Order Type</label>
         <div style={{ display: "flex", gap: 8, marginTop: 8, marginBottom: 16 }}>
           {TYPES.map(t => (
@@ -384,21 +374,18 @@ function OrderModal({ cartItems, vatPct, tables, onConfirm, onClose }) {
                 </div>
               </div>
             )}
-
             {needsTable && (
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontSize: 11, color: "#86868B", fontWeight: 500, display: "block", marginBottom: 4 }}>Table</label>
                 <select value={tableId} onChange={e => setTableId(e.target.value)} style={inputStyle}>
                   <option value="">— select table —</option>
-                  {availableTables.map(t => (
+                  {(tables || []).map(t => (
                     <option key={t._id} value={t._id}>{t.label} (seats {t.capacity})</option>
                   ))}
                 </select>
               </div>
             )}
-
             {needsTime && <TimePicker value={scheduledTime} onChange={setScheduledTime} label={type === "delivery" ? "Delivery Time" : "Pickup Time"} />}
-
             {needsAddress && (
               <div style={{ marginBottom: 14 }}>
                 <label style={{ fontSize: 11, color: "#86868B", fontWeight: 500, display: "block", marginBottom: 4 }}>Delivery Address</label>
@@ -426,26 +413,23 @@ function BookingModal({ onConfirm, onClose, loading, tables = [], bookingError }
   const [phone,     setPhone]     = useState("");
   const [notes,     setNotes]     = useState("");
   const [startTime, setStartTime] = useState("");
-  const [liveTableStatus, setLiveTableStatus] = useState({}); // { tableId: "seated"|"booked" }
+  const [liveTableStatus, setLiveTableStatus] = useState({});
 
-  // Fetch live table status on mount
   useEffect(() => {
     async function fetchLive() {
       try {
         const res = await apiClient.get("/bookings/tables/live");
         const data = res?.data?.data || [];
         const map = {};
-        data.forEach(t => {
-          if (t.status !== "free") map[String(t.tableId)] = t.status;
-        });
+        data.forEach(t => { if (t.status !== "free") map[String(t.tableId)] = t.status; });
         setLiveTableStatus(map);
-      } catch {} // silently ignore
+      } catch {}
     }
     fetchLive();
   }, []);
 
   const valid = name.trim() && guests > 0 && startTime;
-  const occupiedCount = Object.keys(liveTableStatus).length;
+  const occupiedCount  = Object.keys(liveTableStatus).length;
   const availableCount = tables.length - occupiedCount;
 
   return (
@@ -453,7 +437,6 @@ function BookingModal({ onConfirm, onClose, loading, tables = [], bookingError }
       <div style={{ background: "#fff", borderRadius: 20, padding: 26, width: 420, maxWidth: "92vw", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", maxHeight: "92vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
         <h3 style={{ margin: "0 0 18px", fontSize: 17, fontWeight: 700 }}>📅 New Booking</h3>
 
-        {/* availability error */}
         {bookingError && (
           <div style={{ background: "rgba(255,59,48,0.08)", border: "1px solid rgba(255,59,48,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#B42318", fontWeight: 500 }}>
             ⚠️ {bookingError}
@@ -470,20 +453,16 @@ function BookingModal({ onConfirm, onClose, loading, tables = [], bookingError }
             <input type="number" min={1} max={20} value={guests} onChange={e => setGuests(Number(e.target.value))} style={inputStyle} />
           </div>
         </div>
-
         <div style={{ marginBottom: 12 }}>
           <label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 4 }}>Phone</label>
           <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+971…" type="tel" style={inputStyle} />
         </div>
-
         <div style={{ marginBottom: 12 }}>
           <label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 4 }}>Notes</label>
           <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Special requests…" style={inputStyle} />
         </div>
-
         <TimePicker value={startTime} onChange={setStartTime} label="Booking Time *" />
 
-        {/* table availability — uses live booking data */}
         {tables.length > 0 && (
           <div style={{ marginBottom: 14 }}>
             <label style={{ fontSize: 11, color: "#86868B", display: "block", marginBottom: 6 }}>
@@ -494,12 +473,7 @@ function BookingModal({ onConfirm, onClose, loading, tables = [], bookingError }
                 const isOccupied = !!liveTableStatus[String(t._id)];
                 const statusLabel = liveTableStatus[String(t._id)] === "seated" ? "seated" : isOccupied ? "booked" : "free";
                 return (
-                  <div key={t._id} style={{
-                    padding: "4px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600,
-                    background: isOccupied ? "rgba(255,59,48,0.08)" : "rgba(52,199,89,0.10)",
-                    color: isOccupied ? "#B42318" : "#166534",
-                    border: `1px solid ${isOccupied ? "rgba(255,59,48,0.15)" : "rgba(52,199,89,0.2)"}`,
-                  }}>
+                  <div key={t._id} style={{ padding: "4px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600, background: isOccupied ? "rgba(255,59,48,0.08)" : "rgba(52,199,89,0.10)", color: isOccupied ? "#B42318" : "#166534", border: `1px solid ${isOccupied ? "rgba(255,59,48,0.15)" : "rgba(52,199,89,0.2)"}` }}>
                     {t.label || `T${t.tableNumber}`} {isOccupied ? `✗ ${statusLabel}` : "✓"}
                   </div>
                 );
@@ -515,11 +489,7 @@ function BookingModal({ onConfirm, onClose, loading, tables = [], bookingError }
 
         <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
           <button onClick={onClose} style={ghostBtn}>Cancel</button>
-          <button
-            disabled={!valid || loading}
-            onClick={() => onConfirm({ customerName: name, partySize: guests, customerPhone: phone, notes, startTime })}
-            style={{ ...primaryBtn, flex: 1, opacity: (!valid || loading) ? 0.5 : 1 }}
-          >
+          <button disabled={!valid || loading} onClick={() => onConfirm({ customerName: name, partySize: guests, customerPhone: phone, notes, startTime })} style={{ ...primaryBtn, flex: 1, opacity: (!valid || loading) ? 0.5 : 1 }}>
             {loading ? "Creating…" : "Create Booking"}
           </button>
         </div>
@@ -581,7 +551,7 @@ export default function ManualOrders() {
   const [vatPct,         setVatPct]         = useState(5);
   const [tables,         setTables]         = useState([]);
   const [activePage,     setActivePage]     = useState(0);
-  const [cart,           setCart]           = useState({}); // { id: { ...item, qty } }
+  const [cart,           setCart]           = useState({});
   const [showOrder,      setShowOrder]      = useState(false);
   const [showBooking,    setShowBooking]    = useState(false);
   const [bookingLoading, setBookingLoading] = useState(false);
@@ -595,18 +565,11 @@ export default function ManualOrders() {
       setMenuLoading(true);
       try {
         const [agentData, bizData, tablesRes] = await Promise.all([getAgentMe(), getBusinessMe(), apiClient.get("/tables")]);
-        // agentData shape: { agent: { menu: [...] } } OR { menu: [...] } — handle both
         const rawMenu = agentData?.agent?.menu ?? agentData?.menu ?? [];
         setMenu(Array.isArray(rawMenu) ? rawMenu.filter(m => m.available) : []);
         setVatPct(bizData?.business?.vatPercentage ?? bizData?.vatPercentage ?? 5);
         const rawTables = tablesRes?.data;
-        // GET /tables returns { tables: [...] }
-        const allTables = Array.isArray(rawTables?.tables)
-          ? rawTables.tables
-          : Array.isArray(rawTables)
-          ? rawTables
-          : [];
-        // Only active, non-maintenance tables
+        const allTables = Array.isArray(rawTables?.tables) ? rawTables.tables : Array.isArray(rawTables) ? rawTables : [];
         setTables(allTables.filter(t => t.isActive !== false && t.isMaintenance !== true));
       } catch (e) { console.error(e); }
       finally { setMenuLoading(false); }
@@ -622,11 +585,8 @@ export default function ManualOrders() {
       const res = await apiClient.get("/orders", { params: { limit: 100 } });
       const raw = res?.data?.orders ?? res?.data ?? [];
       const all = Array.isArray(raw) ? raw : [];
-      // Show all active orders regardless of type or source
       setActiveOrders(all.filter(o => ["confirmed", "preparing", "ready"].includes(o.status)));
-    } catch (e) {
-      console.warn("fetchActive error:", e?.message);
-    }
+    } catch (e) { console.warn("fetchActive error:", e?.message); }
   }
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 2800); }
@@ -645,7 +605,6 @@ export default function ManualOrders() {
     });
   }
 
-  // Always derive cartItems as array right before use
   const cartItems    = Object.values(cart).filter(i => i.qty > 0);
   const cartCount    = cartItems.reduce((s, i) => s + i.qty, 0);
   const cartSubtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
@@ -657,22 +616,14 @@ export default function ManualOrders() {
     setBookingLoading(true);
     setBookingError(null);
     try {
-      await apiClient.post("/bookings/manual", {
-        customerName, partySize,
-        customerPhone: customerPhone || null,
-        notes: notes || null,
-        startTime: new Date(startTime).toISOString(),
-      });
+      await apiClient.post("/bookings/manual", { customerName, partySize, customerPhone: customerPhone || null, notes: notes || null, startTime: new Date(startTime).toISOString() });
       setShowBooking(false);
       setBookingError(null);
       showToast("✅ Booking created");
     } catch (e) {
-      // Show the backend error message inside the modal instead of closing it
       const msg = e?.response?.data?.error || e?.message || "Failed to create booking";
       setBookingError(msg);
-    } finally {
-      setBookingLoading(false);
-    }
+    } finally { setBookingLoading(false); }
   }
 
   async function handleOrderConfirmed() {
@@ -690,21 +641,11 @@ export default function ManualOrders() {
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--bg-page, #f5f5f7)" }}>
-
-      {/* LEFT: Active orders panel OR nothing (sidebar lives in DashboardLayout) */}
       {showPanel && (
-        <ActiveOrdersPanel
-          orders={activeOrders}
-          vatPct={vatPct}
-          onBack={() => setShowPanel(false)}
-          onOrderDone={handleOrderDone}
-        />
+        <ActiveOrdersPanel orders={activeOrders} vatPct={vatPct} onBack={() => setShowPanel(false)} onOrderDone={handleOrderDone} />
       )}
 
-      {/* RIGHT: Menu */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
-
-        {/* top bar */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px 0", flexShrink: 0, gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {!showPanel && activeOrders.length > 0 && (
@@ -717,7 +658,6 @@ export default function ManualOrders() {
           <button onClick={() => setShowBooking(true)} style={{ ...primaryBtn, fontSize: 12, padding: "8px 14px" }}>📅 New Booking</button>
         </div>
 
-        {/* category tabs */}
         {!menuLoading && categories.length > 0 && (
           <div style={{ flexShrink: 0, padding: "10px 18px 0" }}>
             <div style={{ display: "flex", gap: 7, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none" }}>
@@ -733,7 +673,6 @@ export default function ManualOrders() {
           </div>
         )}
 
-        {/* menu */}
         {menuLoading ? (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#86868B" }}>Loading menu…</div>
         ) : menu.length === 0 ? (
@@ -742,7 +681,6 @@ export default function ManualOrders() {
           <SwipeablePages categories={categories} grouped={grouped} cart={cart} onAdd={addItem} onRemove={removeItem} activePage={activePage} onPageChange={setActivePage} />
         )}
 
-        {/* cart bar */}
         {cartCount > 0 && (
           <div style={{ flexShrink: 0, background: "rgba(255,255,255,0.94)", backdropFilter: "blur(20px)", borderTop: "1px solid rgba(0,0,0,0.08)", padding: "11px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 -4px 20px rgba(0,0,0,0.06)" }}>
             <div>
@@ -757,27 +695,9 @@ export default function ManualOrders() {
         )}
       </div>
 
-      {/* Modals */}
-      {showOrder && (
-        <OrderModal
-          cartItems={cartItems}
-          vatPct={vatPct}
-          tables={tables}
-          onConfirm={handleOrderConfirmed}
-          onClose={() => setShowOrder(false)}
-        />
-      )}
-      {showBooking && (
-        <BookingModal
-          onConfirm={handleBookingConfirm}
-          onClose={() => { setShowBooking(false); setBookingError(null); }}
-          loading={bookingLoading}
-          tables={tables}
-          bookingError={bookingError}
-        />
-      )}
+      {showOrder && <OrderModal cartItems={cartItems} vatPct={vatPct} tables={tables} onConfirm={handleOrderConfirmed} onClose={() => setShowOrder(false)} />}
+      {showBooking && <BookingModal onConfirm={handleBookingConfirm} onClose={() => { setShowBooking(false); setBookingError(null); }} loading={bookingLoading} tables={tables} bookingError={bookingError} />}
 
-      {/* Toast */}
       {toast && (
         <div style={{ position: "fixed", bottom: 70, left: "50%", transform: "translateX(-50%)", background: "#1D1D1F", color: "#fff", padding: "11px 22px", borderRadius: 100, fontSize: 13, fontWeight: 500, zIndex: 3000, whiteSpace: "nowrap", boxShadow: "0 4px 20px rgba(0,0,0,0.2)" }}>
           {toast}
