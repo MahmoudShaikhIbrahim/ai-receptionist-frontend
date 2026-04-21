@@ -10,6 +10,7 @@ function fmtTime(dt) {
 }
 function fmtAED(n) { return `${Number(n || 0).toFixed(2)} AED`; }
 function getOrderItems(o) {
+  if (!o) return [];
   const fromRounds = (o.rounds || []).flatMap(r => r.items || []);
   return fromRounds.length > 0 ? fromRounds : (o.items || []);
 }
@@ -58,11 +59,11 @@ function OrderCard({ order, onStatus, onComplete, updating }) {
   const names = getItemNames(order);
   const tableHint = order.tableLabel || null;
 
-  // Collect item-level notes
-  const itemNotes = getOrderItemsAll(order)
-    .filter(i => i.notes)
+  // Collect item-level notes — guard against undefined order
+  const itemNotes = order ? getOrderItemsAll(order)
+    .filter(i => i?.notes)
     .map(i => `${i.name}: ${i.notes}`)
-    .join(" · ");
+    .join(" · ") : "";
 
   return (
     <div style={cardStyle}>
