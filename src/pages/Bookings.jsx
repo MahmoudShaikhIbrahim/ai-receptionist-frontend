@@ -60,7 +60,7 @@ function OrderCard({ order, onStatus, onComplete, updating }) {
   const tableHint = order.tableLabel || null;
 
   // Collect item-level notes — guard against undefined order
-  const itemNotes = order ? getOrderItemsAll(order)
+  const itemNotes = order ? getOrderItems(order)
     .filter(i => i?.notes)
     .map(i => `${i.name}: ${i.notes}`)
     .join(" · ") : "";
