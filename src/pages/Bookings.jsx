@@ -58,13 +58,35 @@ function OrderCard({ order, onStatus, onComplete, updating }) {
   const names = getItemNames(order);
   const tableHint = order.tableLabel || null;
 
+  // Collect item-level notes
+  const itemNotes = getOrderItemsAll(order)
+    .filter(i => i.notes)
+    .map(i => `${i.name}: ${i.notes}`)
+    .join(" · ");
+
   return (
     <div style={cardStyle}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: "#1D1D1F", lineHeight: 1.4, marginBottom: 5 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: "#1D1D1F", lineHeight: 1.4, marginBottom: 3 }}>
         {tableHint && <span style={{ fontSize: 10, fontWeight: 700, color: "#0071E3", background: "rgba(0,113,227,0.08)", padding: "1px 5px", borderRadius: 4, marginRight: 5 }}>{tableHint}</span>}
         {names}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+      {/* Customer name */}
+      {order.customerName && order.customerName !== "Walk-in" && (
+        <div style={{ fontSize: 10, color: "#86868B", marginBottom: 2 }}>👤 {order.customerName}</div>
+      )}
+      {/* Delivery address — full address */}
+      {order.deliveryAddress && (
+        <div style={{ fontSize: 10, color: "#86868B", marginBottom: 2 }}>📍 {order.deliveryAddress}</div>
+      )}
+      {/* Item-level notes */}
+      {itemNotes && (
+        <div style={{ fontSize: 10, color: "#FF9500", fontWeight: 600, marginBottom: 2 }}>📝 {itemNotes}</div>
+      )}
+      {/* Order-level notes */}
+      {order.notes && (
+        <div style={{ fontSize: 10, color: "#FF9500", fontWeight: 600, marginBottom: 2 }}>💬 {order.notes}</div>
+      )}
+      <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap", marginTop: 3 }}>
         <Pill status={order.status} />
         {order.status === "confirmed" && <Btn label="Preparing" color="#FF9500" onClick={() => onStatus(order._id, "preparing")} disabled={busy} />}
         {order.status === "preparing" && <Btn label="Ready"     color="#0071E3" onClick={() => onStatus(order._id, "ready")}     disabled={busy} />}
